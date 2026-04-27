@@ -39,6 +39,14 @@ export const getGallery = () => api.get('/api/gallery').then(r => r.data);
 export const addGalleryImage = (data) => api.post('/api/gallery', data).then(r => r.data);
 export const deleteGalleryImage = (id) => api.delete(`/api/gallery/${id}`).then(r => r.data);
 
+// Instagram feed (auto-updates from @demurebakes)
+export const getInstagramFeed = () => api.get('/api/instagram-feed').then(r => r.data);
+
+// Orders
+export const createOrder = (data) => api.post('/api/orders', data).then(r => r.data);
+export const getOrders = () => api.get('/api/orders').then(r => r.data);
+export const updateOrderStatus = (id, status) => api.put(`/api/orders/${id}/status`, { status }).then(r => r.data);
+
 // Upload
 export const uploadImages = (files) => {
   const formData = new FormData();

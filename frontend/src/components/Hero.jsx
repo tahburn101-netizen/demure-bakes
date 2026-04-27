@@ -1,14 +1,18 @@
-import React, { useRef, useEffect } from 'react';
-import { BACKEND_URL } from '../api';
+import React, { useEffect, useRef } from 'react';
 
-export default function Hero() {
-  const videoRef = useRef(null);
+const API_BASE = 'https://demure-bakes-backend-production.up.railway.app';
 
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
-  }, []);
+const Sparkle = ({ size, color, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={style}>
+    <path
+      d="M12 2L13.5 9.5L21 11L13.5 12.5L12 20L10.5 12.5L3 11L10.5 9.5L12 2Z"
+      fill={color}
+    />
+  </svg>
+);
+
+export default function Hero({ onOrderClick }) {
+  const ringRef = useRef(null);
 
   const scrollTo = (id) => {
     const el = document.getElementById(id);
@@ -17,381 +21,337 @@ export default function Hero() {
 
   return (
     <section
-      id="home"
+      id="hero"
       style={{
         position: 'relative',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         overflow: 'hidden',
-        background: '#f5f0e8',
+        background: 'rgb(237,232,223)',
+        paddingTop: '64px',
       }}
     >
-      {/* Video Background */}
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        loop
-        playsInline
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          zIndex: 0,
-          opacity: 0.35,
-        }}
-      >
-        <source src={`${BACKEND_URL}/uploads/hero-video.mp4`} type="video/mp4" />
-      </video>
+      {/* Soft background blobs */}
+      <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        <div style={{
+          position: 'absolute', top: '-8%', right: '-4%',
+          width: '42vw', height: '42vw', borderRadius: '50%',
+          background: 'rgba(245,198,204,0.22)', filter: 'blur(60px)',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: '-4%', left: '-4%',
+          width: '32vw', height: '32vw', borderRadius: '50%',
+          background: 'rgba(201,150,58,0.09)', filter: 'blur(50px)',
+        }} />
+      </div>
 
-      {/* Gradient overlay for readability */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'linear-gradient(135deg, rgba(245,240,232,0.88) 0%, rgba(245,240,232,0.70) 50%, rgba(245,240,232,0.45) 100%)',
-        zIndex: 1,
-      }} />
+      {/* Animated sparkles */}
+      <div aria-hidden="true" className="sparkle-wrap s1" style={{ position: 'absolute', top: '165px', left: '101px' }}>
+        <Sparkle size={28} color="#F5C6CC" />
+      </div>
+      <div aria-hidden="true" className="sparkle-wrap s2" style={{ position: 'absolute', top: '275px', right: '126px' }}>
+        <Sparkle size={20} color="#F5C6CC" />
+      </div>
+      <div aria-hidden="true" className="sparkle-wrap s3" style={{ position: 'absolute', top: '748px', left: '189px' }}>
+        <Sparkle size={22} color="#C9963A" />
+      </div>
+      <div aria-hidden="true" className="sparkle-wrap s4" style={{ position: 'absolute', top: '120px', right: '300px' }}>
+        <Sparkle size={16} color="#F5C6CC" />
+      </div>
+      <div aria-hidden="true" className="sparkle-wrap s5" style={{ position: 'absolute', bottom: '200px', left: '60px' }}>
+        <Sparkle size={18} color="#C9963A" />
+      </div>
+      <div aria-hidden="true" className="sparkle-wrap s6" style={{ position: 'absolute', bottom: '120px', right: '200px' }}>
+        <Sparkle size={24} color="#F5C6CC" />
+      </div>
 
-      {/* Decorative floating elements */}
-      <div style={{
-        position: 'absolute',
-        top: '15%',
-        left: '5%',
-        width: '8px',
-        height: '8px',
-        background: '#c8a84b',
-        borderRadius: '50%',
-        opacity: 0.5,
-        zIndex: 2,
-        animation: 'float 4s ease-in-out infinite',
-      }} />
-      <div style={{
-        position: 'absolute',
-        top: '30%',
-        right: '8%',
-        width: '5px',
-        height: '5px',
-        background: '#c8a84b',
-        borderRadius: '50%',
-        opacity: 0.4,
-        zIndex: 2,
-        animation: 'float 5s ease-in-out infinite 1s',
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: '25%',
-        left: '12%',
-        fontSize: '1.5rem',
-        opacity: 0.15,
-        zIndex: 2,
-        animation: 'float 6s ease-in-out infinite 0.5s',
-      }}>✦</div>
+      {/* Main grid */}
+      <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1.5rem', width: '100%' }}>
+        <div className="hero-grid" style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '3rem',
+          alignItems: 'center',
+          minHeight: 'calc(100vh - 64px)',
+          paddingTop: '3rem',
+          paddingBottom: '5rem',
+        }}>
 
-      {/* Main content */}
-      <div style={{
-        position: 'relative',
-        zIndex: 3,
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '0 1.5rem',
-        width: '100%',
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '3rem',
-        alignItems: 'center',
-        paddingTop: '80px',
-      }}
-      className="hero-grid"
-      >
-        {/* Left: Text */}
-        <div style={{ animation: 'fadeInUp 0.8s ease forwards' }}>
-          <p style={{
-            fontFamily: "'Inter', sans-serif",
-            fontSize: '0.75rem',
-            fontWeight: '600',
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: '#c8a84b',
-            marginBottom: '1.25rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-          }}>
-            ✦ Handcrafted with Love ✦
-          </p>
-
-          <h1 style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: 'clamp(2.5rem, 5vw, 4rem)',
-            fontWeight: '700',
-            lineHeight: '1.1',
-            marginBottom: '1.25rem',
-          }}>
-            <span style={{ color: '#2c1810', display: 'block' }}>Dive into</span>
-            <span style={{
-              color: '#c8a84b',
-              display: 'block',
-              fontStyle: 'italic',
-            }}>Happiness</span>
-          </h1>
-
-          <p style={{
-            fontFamily: "'Inter', sans-serif",
-            fontSize: '1rem',
-            color: '#5c3d2e',
-            lineHeight: '1.7',
-            marginBottom: '2rem',
-            maxWidth: '420px',
-          }}>
-            Handcrafted brownies, cupcakes &amp; bespoke celebration cakes made with love in the UK
-          </p>
-
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '2.5rem' }}>
-            <button
-              onClick={() => scrollTo('contact')}
-              style={{
-                background: '#3d2b1f',
-                color: '#f5f0e8',
-                border: 'none',
-                borderRadius: '50px',
-                padding: '0.85rem 2rem',
-                fontFamily: "'Inter', sans-serif",
-                fontSize: '0.9rem',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 4px 15px rgba(61,43,31,0.25)',
-              }}
-              onMouseEnter={e => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 6px 20px rgba(61,43,31,0.35)'; }}
-              onMouseLeave={e => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 15px rgba(61,43,31,0.25)'; }}
-            >
-              Order Now
-            </button>
-            <button
-              onClick={() => scrollTo('menu')}
-              style={{
-                background: 'transparent',
-                color: '#3d2b1f',
-                border: '2px solid #3d2b1f',
-                borderRadius: '50px',
-                padding: '0.8rem 2rem',
-                fontFamily: "'Inter', sans-serif",
-                fontSize: '0.9rem',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-              }}
-              onMouseEnter={e => { e.target.style.background = '#3d2b1f'; e.target.style.color = '#f5f0e8'; e.target.style.transform = 'translateY(-2px)'; }}
-              onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = '#3d2b1f'; e.target.style.transform = 'translateY(0)'; }}
-            >
-              View Menu
-            </button>
-          </div>
-
-          {/* Stats */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              {['🧁', '🍫', '🎂', '🍰'].map((emoji, i) => (
-                <span key={i} style={{ fontSize: '1.4rem' }}>{emoji}</span>
-              ))}
+          {/* ── Left: Text ── */}
+          <div className="hero-left">
+            {/* Badge */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <span style={{
+                fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.85rem',
+                color: 'rgb(201,150,58)', textTransform: 'uppercase', letterSpacing: '0.15em',
+              }}>✦ Handcrafted with Love ✦</span>
             </div>
-            <div>
-              <div style={{ display: 'flex', gap: '2px', marginBottom: '2px' }}>
-                {[1,2,3,4,5].map(s => (
-                  <span key={s} style={{ color: '#c8a84b', fontSize: '0.75rem' }}>★</span>
+
+            {/* Heading */}
+            <h1 style={{ fontFamily: '"Baloo 2", cursive', lineHeight: 1.05, marginBottom: '1.5rem', margin: 0 }}>
+              <span className="anim-dive" style={{
+                display: 'block',
+                fontSize: 'clamp(3rem,7vw,5.5rem)',
+                fontWeight: 800,
+                color: 'rgb(61,35,20)',
+                marginBottom: '0.1em',
+              }}>Dive into</span>
+              <span className="anim-happy" style={{
+                display: 'block',
+                fontSize: 'clamp(3rem,7vw,5.5rem)',
+                fontWeight: 800,
+                color: 'rgb(201,150,58)',
+              }}>Happiness</span>
+            </h1>
+
+            {/* Subtext */}
+            <p className="anim-sub" style={{
+              fontFamily: 'Nunito, sans-serif', fontSize: '1.1rem',
+              color: 'rgb(107,79,58)', maxWidth: '480px',
+              margin: '1.5rem 0 2rem 0', lineHeight: 1.75,
+            }}>
+              Handcrafted brownies, cupcakes &amp; bespoke celebration cakes made with love in the UK
+            </p>
+
+            {/* Buttons */}
+            <div className="anim-sub hero-btns" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
+              <button
+                className="btn-primary"
+                onClick={onOrderClick}
+              >
+                Order Now
+              </button>
+              <button
+                className="btn-outline-hero"
+                onClick={() => scrollTo('menu')}
+              >
+                View Menu
+              </button>
+            </div>
+
+            {/* Social proof */}
+            <div className="anim-sub" style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+              <div style={{ display: 'flex' }}>
+                {['🧁','🍫','🎂','🍰'].map((e, i) => (
+                  <div key={i} style={{
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    background: 'rgb(245,198,204)', border: '2px solid white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1rem', marginLeft: i === 0 ? 0 : '-8px',
+                  }}>{e}</div>
                 ))}
               </div>
-              <span style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: '0.8rem',
-                color: '#5c3d2e',
-                fontWeight: '500',
-              }}>250+ happy customers</span>
-            </div>
-            <div style={{
-              height: '30px',
-              width: '1px',
-              background: 'rgba(92,61,46,0.2)',
-            }} />
-            <span style={{
-              fontFamily: "'Inter', sans-serif",
-              fontSize: '0.8rem',
-              color: '#5c3d2e',
-              fontWeight: '500',
-            }}>Made with Love</span>
-          </div>
-        </div>
-
-        {/* Right: Circular image / logo display */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          position: 'relative',
-          animation: 'fadeIn 1s ease 0.3s both',
-        }}>
-          {/* Outer decorative ring */}
-          <div style={{
-            width: 'clamp(280px, 40vw, 420px)',
-            height: 'clamp(280px, 40vw, 420px)',
-            borderRadius: '50%',
-            border: '2px dashed rgba(200,168,75,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            animation: 'float 6s ease-in-out infinite',
-          }}>
-            {/* Inner circle with background */}
-            <div style={{
-              width: '90%',
-              height: '90%',
-              borderRadius: '50%',
-              background: 'rgba(255,255,255,0.7)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(200,168,75,0.2)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              boxShadow: '0 20px 60px rgba(61,43,31,0.15)',
-            }}>
-              {/* Demure Bakes branding text */}
-              <div style={{
-                textAlign: 'center',
-                padding: '2rem',
-              }}>
-                <div style={{
-                  fontFamily: "'Playfair Display', serif",
-                  fontSize: 'clamp(2rem, 4vw, 3rem)',
-                  fontWeight: '700',
-                  fontStyle: 'italic',
-                  color: '#c8a84b',
-                  letterSpacing: '0.05em',
-                  lineHeight: '1',
-                }}>DEMURE</div>
-                <div style={{
-                  fontFamily: "'Playfair Display', serif",
-                  fontSize: 'clamp(0.8rem, 1.5vw, 1.1rem)',
-                  fontWeight: '400',
-                  color: '#3d2b1f',
-                  letterSpacing: '0.3em',
-                  marginTop: '4px',
-                }}>BAKES</div>
-                <div style={{
-                  marginTop: '1rem',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                }}>
-                  <span style={{ fontSize: '2rem' }}>🧁</span>
-                  <span style={{ fontSize: '2rem' }}>🍫</span>
+              <div>
+                <div style={{ display: 'flex', gap: '2px', marginBottom: '2px' }}>
+                  {[1,2,3,4,5].map(s => (
+                    <svg key={s} width="14" height="14" viewBox="0 0 24 24" fill="#C9963A">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                  ))}
                 </div>
+                <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.8rem', color: 'rgb(160,136,120)', margin: 0 }}>
+                  250+ happy customers
+                </p>
               </div>
             </div>
+          </div>
 
-            {/* Floating badge: Bespoke Orders */}
-            <div style={{
-              position: 'absolute',
-              top: '15%',
-              right: '-5%',
-              background: 'rgba(200,168,75,0.9)',
-              color: '#3d2b1f',
-              padding: '0.5rem 1rem',
-              borderRadius: '50px',
-              fontFamily: "'Inter', sans-serif",
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              boxShadow: '0 4px 15px rgba(200,168,75,0.3)',
-              animation: 'float 4s ease-in-out infinite 0.5s',
-              whiteSpace: 'nowrap',
+          {/* ── Right: Video Circle ── */}
+          <div className="hero-right" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div className="hero-float" style={{
+              position: 'relative',
+              width: 'min(420px, 90vw)',
+              height: 'min(420px, 90vw)',
             }}>
-              ✦ Bespoke Orders
-            </div>
+              {/* Spinning dashed ring */}
+              <div className="ring-spin" style={{
+                position: 'absolute',
+                inset: '-18px',
+                borderRadius: '50%',
+                border: '3px dashed rgba(201,150,58,0.35)',
+              }} />
 
-            {/* Floating badge: Made with Love */}
-            <div style={{
-              position: 'absolute',
-              bottom: '18%',
-              right: '-8%',
-              background: 'rgba(255,255,255,0.95)',
-              color: '#3d2b1f',
-              padding: '0.5rem 1rem',
-              borderRadius: '50px',
-              fontFamily: "'Inter', sans-serif",
-              fontSize: '0.75rem',
-              fontWeight: '600',
-              boxShadow: '0 4px 15px rgba(61,43,31,0.15)',
-              animation: 'float 5s ease-in-out infinite 1s',
-              whiteSpace: 'nowrap',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.3rem',
-            }}>
-              <span style={{ color: '#e91e63' }}>♥</span> Made with Love
+              {/* Soft glow */}
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(245,198,204,0.35) 0%, rgba(237,232,223,0) 70%)',
+                pointerEvents: 'none',
+              }} />
+
+              {/* Video circle */}
+              <div style={{
+                position: 'relative', width: '100%', height: '100%',
+                borderRadius: '50%', overflow: 'hidden',
+                boxShadow: '0 24px 80px rgba(61,35,20,0.2), 0 0 0 8px rgba(201,150,58,0.12)',
+              }}>
+                <video
+                  autoPlay muted loop playsInline
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                >
+                  <source src={`${API_BASE}/uploads/hero-video.mp4`} type="video/mp4" />
+                </video>
+              </div>
+
+              {/* "Made with Love" badge — bottom right */}
+              <div style={{
+                position: 'absolute', bottom: '4%', right: '-6%',
+                background: 'white', borderRadius: '16px',
+                padding: '10px 16px', boxShadow: '0 8px 32px rgba(61,35,20,0.15)',
+                display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap',
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#F5C6CC" stroke="#F5C6CC" strokeWidth="2">
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                </svg>
+                <span style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '0.85rem', color: 'rgb(61,35,20)' }}>
+                  Made with Love
+                </span>
+              </div>
+
+              {/* "Bespoke Orders" badge — top left */}
+              <div style={{
+                position: 'absolute', top: '4%', left: '-6%',
+                background: 'rgb(201,150,58)', borderRadius: '12px',
+                padding: '8px 14px', boxShadow: '0 4px 16px rgba(201,150,58,0.4)',
+                whiteSpace: 'nowrap',
+              }}>
+                <span style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '0.8rem', color: 'white' }}>
+                  ✦ Bespoke Orders
+                </span>
+              </div>
             </div>
           </div>
+
         </div>
       </div>
 
       {/* Scroll indicator */}
-      <div style={{
-        position: 'absolute',
-        bottom: '2rem',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 3,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '0.5rem',
-        opacity: 0.6,
+      <div className="scroll-bounce" style={{
+        position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
       }}>
-        <span style={{
-          fontFamily: "'Inter', sans-serif",
-          fontSize: '0.7rem',
-          letterSpacing: '0.15em',
-          color: '#5c3d2e',
-          textTransform: 'uppercase',
-        }}>Scroll</span>
-        <div style={{
-          width: '1px',
-          height: '30px',
-          background: 'linear-gradient(to bottom, #c8a84b, transparent)',
-          animation: 'scrollBounce 2s ease-in-out infinite',
-        }} />
-        <span style={{ color: '#c8a84b', fontSize: '0.8rem', animation: 'scrollBounce 2s ease-in-out infinite' }}>↓</span>
+        <span style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.75rem', color: 'rgb(160,136,120)' }}>Scroll</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgb(160,136,120)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </div>
 
       <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
+        /* ── Sparkle animations ── */
+        @keyframes sparkle1 {
+          0%, 100% { opacity: 0.3; transform: scale(0.8) rotate(0deg); }
+          50% { opacity: 1; transform: scale(1.2) rotate(20deg); }
         }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes sparkle2 {
+          0%, 100% { opacity: 0.2; transform: scale(0.9) rotate(0deg); }
+          50% { opacity: 0.9; transform: scale(1.3) rotate(-15deg); }
         }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+        @keyframes sparkle3 {
+          0%, 100% { opacity: 0.4; transform: scale(1) rotate(0deg); }
+          50% { opacity: 1; transform: scale(1.1) rotate(30deg); }
         }
-        @keyframes scrollBounce {
+        .sparkle-wrap { pointer-events: none; }
+        .sparkle-wrap.s1 { animation: sparkle1 2.5s ease-in-out infinite; }
+        .sparkle-wrap.s2 { animation: sparkle2 3s ease-in-out 0.5s infinite; }
+        .sparkle-wrap.s3 { animation: sparkle3 2s ease-in-out 1s infinite; }
+        .sparkle-wrap.s4 { animation: sparkle1 3.5s ease-in-out 0.3s infinite; }
+        .sparkle-wrap.s5 { animation: sparkle2 2.8s ease-in-out 0.8s infinite; }
+        .sparkle-wrap.s6 { animation: sparkle3 3.2s ease-in-out 0.2s infinite; }
+
+        /* ── Spinning ring ── */
+        @keyframes ringRotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .ring-spin {
+          animation: ringRotate 20s linear infinite;
+        }
+
+        /* ── Hero float ── */
+        @keyframes heroFloat {
           0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(6px); }
+          50% { transform: translateY(-14px); }
         }
-        @media (max-width: 768px) {
+        .hero-float {
+          animation: heroFloat 4s ease-in-out infinite;
+        }
+
+        /* ── Text entrance ── */
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(40px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .anim-dive { animation: slideUp 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.3s both; }
+        .anim-happy { animation: slideUp 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.5s both; }
+        .anim-sub { animation: slideUp 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.7s both; }
+
+        /* ── Scroll bounce ── */
+        @keyframes bounce {
+          0%, 100% { transform: translateX(-50%) translateY(0); }
+          50% { transform: translateX(-50%) translateY(7px); }
+        }
+        .scroll-bounce { animation: bounce 1.4s ease-in-out infinite; }
+
+        /* ── Buttons ── */
+        .btn-primary {
+          font-family: "Baloo 2", cursive;
+          font-weight: 700;
+          font-size: 1rem;
+          padding: 0.75rem 2rem;
+          border-radius: 50px;
+          border: none;
+          background: rgb(61,35,20);
+          color: rgb(237,232,223);
+          cursor: pointer;
+          box-shadow: 0 4px 16px rgba(61,35,20,0.25);
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(61,35,20,0.35);
+        }
+        .btn-outline-hero {
+          font-family: "Baloo 2", cursive;
+          font-weight: 700;
+          font-size: 1rem;
+          padding: 0.75rem 2rem;
+          border-radius: 50px;
+          border: 2px solid rgb(201,150,58);
+          background: transparent;
+          color: rgb(201,150,58);
+          cursor: pointer;
+          transition: transform 0.2s, background 0.2s, color 0.2s;
+        }
+        .btn-outline-hero:hover {
+          background: rgb(201,150,58);
+          color: white;
+          transform: translateY(-2px);
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 1024px) {
           .hero-grid {
             grid-template-columns: 1fr !important;
-            text-align: center;
+            text-align: center !important;
+            padding-top: 2rem !important;
           }
-          .hero-grid > div:last-child {
-            display: none !important;
+          .hero-left {
+            text-align: center !important;
+            order: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .hero-left p { margin-left: auto !important; margin-right: auto !important; }
+          .hero-btns { justify-content: center !important; }
+          .hero-right { order: 1; }
+          .sparkle-wrap.s3 { display: none; }
+        }
+        @media (max-width: 640px) {
+          .sparkle-wrap.s1, .sparkle-wrap.s4 { display: none; }
+          .hero-float {
+            width: min(300px, 80vw) !important;
+            height: min(300px, 80vw) !important;
           }
         }
       `}</style>

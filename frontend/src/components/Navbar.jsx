@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function Navbar() {
+export default function Navbar({ onOrderClick }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -17,7 +17,7 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { label: 'Home', id: 'home' },
+    { label: 'Home', id: 'hero' },
     { label: 'Menu', id: 'menu' },
     { label: 'Gallery', id: 'gallery' },
     { label: 'About', id: 'about' },
@@ -31,55 +31,42 @@ export default function Navbar() {
       left: 0,
       right: 0,
       zIndex: 1000,
-      transition: 'all 0.3s ease',
-      background: scrolled ? 'rgba(245, 240, 232, 0.97)' : 'transparent',
-      backdropFilter: scrolled ? 'blur(10px)' : 'none',
-      boxShadow: scrolled ? '0 2px 20px rgba(61,43,31,0.1)' : 'none',
-      padding: '0 1.5rem',
+      transition: 'all 0.3s',
+      background: scrolled ? 'rgba(237, 232, 223, 0.95)' : 'transparent',
+      backdropFilter: scrolled ? 'blur(12px)' : 'none',
+      boxShadow: scrolled ? '0 2px 16px rgba(61, 35, 20, 0.08)' : 'none',
     }}>
       <div style={{
-        maxWidth: '1200px',
+        maxWidth: '80rem',
         margin: '0 auto',
+        padding: '0 1rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: '70px',
+        height: '64px',
       }}>
         {/* Logo */}
         <button
-          onClick={() => scrollTo('home')}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0',
-          }}
+          onClick={() => scrollTo('hero')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
         >
           <span style={{
-            fontFamily: "'Playfair Display', serif",
+            fontFamily: '"Baloo 2", cursive',
+            fontWeight: 800,
             fontSize: '1.5rem',
-            fontWeight: '700',
-            fontStyle: 'italic',
-            color: '#c8a84b',
-            letterSpacing: '-0.5px',
+            color: 'rgb(201, 150, 58)',
+            letterSpacing: '-0.01em',
           }}>Demure</span>
           <span style={{
-            fontFamily: "'Playfair Display', serif",
+            fontFamily: '"Baloo 2", cursive',
+            fontWeight: 400,
             fontSize: '1.5rem',
-            fontWeight: '400',
-            color: '#3d2b1f',
-            marginLeft: '6px',
+            color: 'rgb(107, 79, 58)',
           }}>Bakes</span>
         </button>
 
         {/* Desktop Nav */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '2rem',
-        }} className="desktop-nav">
+        <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
           {navLinks.map(link => (
             <button
               key={link.id}
@@ -88,36 +75,36 @@ export default function Navbar() {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                fontFamily: "'Inter', sans-serif",
-                fontSize: '0.9rem',
-                fontWeight: '500',
-                color: '#3d2b1f',
+                fontFamily: 'Nunito, sans-serif',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                color: 'rgb(107, 79, 58)',
                 transition: 'color 0.2s',
-                padding: '0.25rem 0',
-                position: 'relative',
+                padding: 0,
               }}
-              onMouseEnter={e => e.target.style.color = '#c8a84b'}
-              onMouseLeave={e => e.target.style.color = '#3d2b1f'}
+              onMouseEnter={e => e.currentTarget.style.color = 'rgb(201, 150, 58)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgb(107, 79, 58)'}
             >
               {link.label}
             </button>
           ))}
           <button
-            onClick={() => scrollTo('contact')}
+            onClick={onOrderClick}
             style={{
-              background: '#3d2b1f',
-              color: '#f5f0e8',
+              background: 'rgb(61, 35, 20)',
+              color: 'rgb(237, 232, 223)',
               border: 'none',
               borderRadius: '50px',
-              padding: '0.6rem 1.5rem',
-              fontFamily: "'Inter', sans-serif",
+              padding: '0.5rem 1.25rem',
+              fontFamily: '"Baloo 2", cursive',
+              fontWeight: 700,
               fontSize: '0.875rem',
-              fontWeight: '500',
               cursor: 'pointer',
-              transition: 'all 0.3s ease',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              boxShadow: '0 4px 12px rgba(61,35,20,0.2)',
             }}
-            onMouseEnter={e => { e.target.style.background = '#5c3d2e'; e.target.style.transform = 'translateY(-1px)'; }}
-            onMouseLeave={e => { e.target.style.background = '#3d2b1f'; e.target.style.transform = 'translateY(0)'; }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(61,35,20,0.3)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(61,35,20,0.2)'; }}
           >
             Order Now
           </button>
@@ -126,31 +113,34 @@ export default function Navbar() {
         {/* Mobile hamburger */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          style={{
-            display: 'none',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            flexDirection: 'column',
-            gap: '5px',
-            padding: '4px',
-          }}
           className="mobile-menu-btn"
+          style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '8px', color: 'rgb(107, 79, 58)' }}
           aria-label="Toggle menu"
         >
-          <span style={{ width: '24px', height: '2px', background: '#3d2b1f', display: 'block', transition: 'all 0.3s', transform: menuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none' }}></span>
-          <span style={{ width: '24px', height: '2px', background: '#3d2b1f', display: 'block', transition: 'all 0.3s', opacity: menuOpen ? 0 : 1 }}></span>
-          <span style={{ width: '24px', height: '2px', background: '#3d2b1f', display: 'block', transition: 'all 0.3s', transform: menuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none' }}></span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {menuOpen ? (
+              <>
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </>
+            ) : (
+              <>
+                <line x1="4" x2="20" y1="12" y2="12" />
+                <line x1="4" x2="20" y1="6" y2="6" />
+                <line x1="4" x2="20" y1="18" y2="18" />
+              </>
+            )}
+          </svg>
         </button>
       </div>
 
       {/* Mobile Menu */}
       {menuOpen && (
         <div style={{
-          background: 'rgba(245, 240, 232, 0.98)',
-          backdropFilter: 'blur(10px)',
+          background: 'rgba(237, 232, 223, 0.98)',
+          backdropFilter: 'blur(12px)',
           padding: '1rem 1.5rem 1.5rem',
-          borderTop: '1px solid rgba(200,168,75,0.2)',
+          borderTop: '1px solid rgba(201, 150, 58, 0.2)',
         }}>
           {navLinks.map(link => (
             <button
@@ -163,30 +153,30 @@ export default function Navbar() {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                fontFamily: "'Inter', sans-serif",
+                fontFamily: 'Nunito, sans-serif',
+                fontWeight: 600,
                 fontSize: '1rem',
-                fontWeight: '500',
-                color: '#3d2b1f',
+                color: 'rgb(107, 79, 58)',
                 padding: '0.75rem 0',
-                borderBottom: '1px solid rgba(200,168,75,0.15)',
+                borderBottom: '1px solid rgba(201, 150, 58, 0.15)',
               }}
             >
               {link.label}
             </button>
           ))}
           <button
-            onClick={() => scrollTo('contact')}
+            onClick={onOrderClick}
             style={{
               marginTop: '1rem',
               width: '100%',
-              background: '#3d2b1f',
-              color: '#f5f0e8',
+              background: 'rgb(61, 35, 20)',
+              color: 'rgb(237, 232, 223)',
               border: 'none',
               borderRadius: '50px',
               padding: '0.75rem',
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: '"Baloo 2", cursive',
+              fontWeight: 700,
               fontSize: '0.9rem',
-              fontWeight: '500',
               cursor: 'pointer',
             }}
           >
