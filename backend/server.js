@@ -112,7 +112,15 @@ if (!bankExists) {
   db.prepare('INSERT INTO bank_details (id, bank_name, account_name, account_number, sort_code) VALUES (1, ?, ?, ?, ?)').run('', 'Demure Bakes', '', '');
 }
 
-// Auto-seed products on first startup
+// Auto-seed products on first startup (or reset if seed version changed)
+const SEED_VERSION = '3';
+const currentSeedVersion = db.prepare("SELECT value FROM settings WHERE key = 'seed_version'").get();
+if (!currentSeedVersion || currentSeedVersion.value !== SEED_VERSION) {
+  db.prepare('DELETE FROM products').run();
+  db.prepare('DELETE FROM testimonials').run();
+  db.prepare('DELETE FROM gallery_images').run();
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('seed_version', ?)").run(SEED_VERSION);
+}
 const productCount = db.prepare('SELECT COUNT(*) as count FROM products').get();
 if (productCount.count === 0) {
   const B = BACKEND_URL;
@@ -122,11 +130,14 @@ if (productCount.count === 0) {
       description: "Beautifully decorated cupcakes with fondant hearts, roses and love-themed toppers. Perfect for gifting your special someone. Available in boxes of 3 or 6.",
       price: 18.00,
       category: 'cupcakes',
-      images: [`${B}/uploads/valentines-cupcakes-1.jpg`],
+      images: [
+        `${B}/uploads/valentines-cupcakes-1.jpg`,
+        `${B}/uploads/valentines-cupcakes-2.jpg`
+      ],
       sort_order: 1
     },
     {
-      name: "Oreo Caramel Brownie Slab",
+      name: "Oreo Brownie Slab",
       description: "Rich, fudgy brownie slab loaded with whole Oreo cookies and a generous drizzle of smooth caramel sauce. Perfect for sharing at events and parties. Serves 6-8.",
       price: 20.00,
       category: 'brownies',
@@ -153,12 +164,15 @@ if (productCount.count === 0) {
       description: "Spring-inspired cupcakes with pastel buttercream swirls and mini egg toppers. A delightful Easter treat for the whole family. Available in boxes of 3 or 6.",
       price: 15.00,
       category: 'cupcakes',
-      images: [`${B}/uploads/easter-cupcakes-1.jpg`],
+      images: [
+        `${B}/uploads/easter-cupcakes-1.jpg`,
+        `${B}/uploads/easter-cupcakes-2.jpg`
+      ],
       sort_order: 4
     },
     {
       name: "Easter Treat Box",
-      description: "A gorgeous windowed gift box with Easter cupcakes and chocolate bunny brownies — the perfect spring gift for family and friends.",
+      description: "A gorgeous windowed gift box with Easter cupcakes and chocolate brownies — the perfect spring gift for family and friends.",
       price: 22.00,
       category: 'boxes',
       images: [`${B}/uploads/easter-treat-box-1.jpg`],
@@ -179,7 +193,7 @@ if (productCount.count === 0) {
     },
     {
       name: "Mother's Day Cupcakes",
-      description: "Box of 12 beautifully decorated cupcakes with 'Best Mom Ever' disc toppers and pastel buttercream swirls. The perfect way to celebrate the special woman in your life.",
+      description: "Box of 12 beautifully decorated cupcakes with pastel buttercream swirls and personalised toppers. The perfect way to celebrate the special woman in your life.",
       price: 28.00,
       category: 'cupcakes',
       images: [
@@ -195,7 +209,7 @@ if (productCount.count === 0) {
   console.log(`Seeded ${seedProducts.length} products`);
 }
 
-// Auto-seed testimonials on first startup
+// Auto-seed testimonials
 const testimonialCount = db.prepare('SELECT COUNT(*) as count FROM testimonials').get();
 if (testimonialCount.count === 0) {
   const seedTestimonials = [
@@ -210,23 +224,23 @@ if (testimonialCount.count === 0) {
   console.log(`Seeded ${seedTestimonials.length} testimonials`);
 }
 
-// Auto-seed gallery on first startup
+// Auto-seed gallery
 const galleryCount = db.prepare('SELECT COUNT(*) as count FROM gallery_images').get();
 if (galleryCount.count === 0) {
   const B = BACKEND_URL;
   const seedGallery = [
     { url: `${B}/uploads/valentines-cupcakes-1.jpg`, alt: "Valentine's Cupcakes", sort_order: 1 },
-    { url: `${B}/uploads/oreo-brownie-slab-1.jpg`, alt: 'Oreo Brownie Slab', sort_order: 2 },
-    { url: `${B}/uploads/oreo-brownie-box-1.jpg`, alt: 'Oreo Brownie Box', sort_order: 3 },
-    { url: `${B}/uploads/easter-cupcakes-1.jpg`, alt: 'Easter Cupcakes', sort_order: 4 },
-    { url: `${B}/uploads/easter-treat-box-1.jpg`, alt: 'Easter Treat Box', sort_order: 5 },
-    { url: `${B}/uploads/mothers-day-cupcakes-1.jpg`, alt: "Mother's Day Cupcakes", sort_order: 6 },
-    { url: `${B}/uploads/easter-basket-1.jpg`, alt: 'Easter Basket Hamper', sort_order: 7 },
-    { url: `${B}/uploads/easter-basket-3.jpg`, alt: 'Easter Basket Outdoor', sort_order: 8 },
-    { url: `${B}/uploads/mothers-day-cupcakes-2.jpg`, alt: "Mother's Day Box Sunlit", sort_order: 9 },
-    { url: `${B}/uploads/oreo-brownie-box-3.jpg`, alt: 'Oreo Brownie Box White', sort_order: 10 },
-    { url: `${B}/uploads/easter-basket-4.jpg`, alt: 'Easter Basket Close-Up', sort_order: 11 },
-    { url: `${B}/uploads/oreo-caramel-brownie-1.jpg`, alt: 'Oreo Caramel Brownie', sort_order: 12 }
+    { url: `${B}/uploads/valentines-cupcakes-2.jpg`, alt: "Valentine's Cupcakes 2", sort_order: 2 },
+    { url: `${B}/uploads/oreo-brownie-slab-1.jpg`, alt: 'Oreo Brownie Slab', sort_order: 3 },
+    { url: `${B}/uploads/oreo-caramel-brownie-1.jpg`, alt: 'Oreo Caramel Brownie', sort_order: 4 },
+    { url: `${B}/uploads/oreo-brownie-box-1.jpg`, alt: 'Oreo Brownie Box', sort_order: 5 },
+    { url: `${B}/uploads/oreo-brownie-box-2.jpg`, alt: 'Oreo Brownie Box 2', sort_order: 6 },
+    { url: `${B}/uploads/oreo-brownie-box-3.jpg`, alt: 'Oreo Brownie Box 3', sort_order: 7 },
+    { url: `${B}/uploads/easter-cupcakes-1.jpg`, alt: 'Easter Cupcakes', sort_order: 8 },
+    { url: `${B}/uploads/easter-treat-box-1.jpg`, alt: 'Easter Treat Box', sort_order: 9 },
+    { url: `${B}/uploads/easter-basket-1.jpg`, alt: 'Easter Basket Hamper', sort_order: 10 },
+    { url: `${B}/uploads/easter-basket-2.jpg`, alt: 'Easter Basket 2', sort_order: 11 },
+    { url: `${B}/uploads/mothers-day-cupcakes-1.jpg`, alt: "Mother's Day Cupcakes", sort_order: 12 }
   ];
   const insertGal = db.prepare('INSERT INTO gallery_images (id, url, alt, sort_order) VALUES (?, ?, ?, ?)');
   seedGallery.forEach(g => insertGal.run(uuidv4(), g.url, g.alt, g.sort_order));
