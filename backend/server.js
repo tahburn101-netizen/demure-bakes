@@ -718,14 +718,24 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Demure Bakes API', version: '3.0.0', admin: 'demiadmin' });
-});
-
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
+
+// ==================== SERVE FRONTEND ====================
+const publicDir = path.join(__dirname, 'public');
+if (fs.existsSync(publicDir)) {
+  app.use(express.static(publicDir));
+  // For React Router: serve index.html for all non-API routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(publicDir, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({ message: 'Demure Bakes API', version: '3.0.0', admin: 'demiadmin' });
+  });
+}
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Demure Bakes API v3 running on port ${PORT}`);
