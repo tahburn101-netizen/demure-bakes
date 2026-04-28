@@ -358,7 +358,10 @@ function ProductsTab({ token }) {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ name: '', description: '', price: '', category: 'Brownies', available: true })
+  const [form, setForm] = useState({ name: '', description: '', price: '', category: 'brownies', available: true })
+  const [flavours, setFlavours] = useState([]) // array of strings
+  const [portionSizes, setPortionSizes] = useState([]) // array of { label, price }
+  const [newFlavour, setNewFlavour] = useState('')
   const [files, setFiles] = useState([])
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
@@ -370,19 +373,42 @@ function ProductsTab({ token }) {
   }
   useEffect(() => { load() }, [])
 
-  const openNew = () => { setEditing('new'); setForm({ name: '', description: '', price: '', category: 'Brownies', available: true }); setFiles([]); setMsg('') }
-  const openEdit = p => { setEditing(p.id); setForm({ name: p.name, description: p.description || '', price: String(p.price), category: p.category || 'Brownies', available: p.available !== false }); setFiles([]); setMsg('') }
+  const CATEGORIES = ['brownies', 'cupcakes', 'loaf cakes', 'tray bakes']
+
+  const openNew = () => {
+    setEditing('new')
+    setForm({ name: '', description: '', price: '', category: 'brownies', available: true })
+    setFlavours([])
+    setPortionSizes([])
+    setNewFlavour('')
+    setFiles([])
+    setMsg('')
+  }
+  const openEdit = p => {
+    setEditing(p.id)
+    setForm({ name: p.name, description: p.description || '', price: String(p.price || ''), category: p.category || 'brownies', available: p.available !== false })
+    setFlavours(Array.isArray(p.flavours) ? p.flavours : [])
+    setPortionSizes(Array.isArray(p.portion_sizes) ? p.portion_sizes : [])
+    setNewFlavour('')
+    setFiles([])
+    setMsg('')
+  }
 
   const handleSave = async () => {
-    if (!form.name || !form.price) { setMsg('Name and price are required'); return }
+    if (!form.name) { setMsg('Product name is required'); return }
+    if (portionSizes.length === 0) { setMsg('Add at least one portion size with a price'); return }
     setSaving(true); setMsg('')
     try {
       const fd = new FormData()
       fd.append('name', form.name)
       fd.append('description', form.description)
-      fd.append('price', form.price)
+      // Use lowest portion size price as the base price
+      const basePrice = portionSizes.length > 0 ? Math.min(...portionSizes.map(s => parseFloat(s.price) || 0)) : parseFloat(form.price) || 0
+      fd.append('price', basePrice)
       fd.append('category', form.category)
       fd.append('available', form.available)
+      fd.append('flavours', JSON.stringify(flavours))
+      fd.append('portion_sizes', JSON.stringify(portionSizes))
       files.forEach(f => fd.append('images', f))
       const url = editing === 'new' ? `${API}/api/products` : `${API}/api/products/${editing}`
       const method = editing === 'new' ? 'POST' : 'PUT'
@@ -419,14 +445,68 @@ function ProductsTab({ token }) {
               <textarea style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Describe the product..." />
             </div>
             <div>
-              <label style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.82rem', color: C.muted, display: 'block', marginBottom: '0.3rem' }}>Price (£) *</label>
-              <input style={inputStyle} type="number" step="0.01" min="0" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="12.00" />
-            </div>
-            <div>
               <label style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.82rem', color: C.muted, display: 'block', marginBottom: '0.3rem' }}>Category</label>
               <select style={inputStyle} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                {['Brownies', 'Cupcakes', 'Cakes', 'Seasonal', 'Bundles', 'Custom'].map(c => <option key={c}>{c}</option>)}
+                {CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
               </select>
+            </div>
+
+            {/* ── PORTION SIZES ── */}
+            <div style={{ gridColumn: '1/-1' }}>
+              <label style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.82rem', color: C.muted, display: 'block', marginBottom: '0.5rem' }}>Portion Sizes &amp; Prices *</label>
+              <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.78rem', color: C.muted, margin: '0 0 0.75rem' }}>Each size can have its own price. Customers choose from these options when ordering.</p>
+              {portionSizes.map((s, i) => (
+                <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    style={{ ...inputStyle, flex: 2 }}
+                    value={s.label}
+                    onChange={e => setPortionSizes(ps => ps.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
+                    placeholder="e.g. Box of 6, Serves 4-6"
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flex: 1 }}>
+                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, color: C.gold }}>£</span>
+                    <input
+                      style={{ ...inputStyle }}
+                      type="number" step="0.01" min="0"
+                      value={s.price}
+                      onChange={e => setPortionSizes(ps => ps.map((x, j) => j === i ? { ...x, price: e.target.value } : x))}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <button onClick={() => setPortionSizes(ps => ps.filter((_, j) => j !== i))} style={{ background: '#FEE2E2', color: '#B91C1C', border: 'none', borderRadius: '8px', padding: '0.5rem 0.65rem', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem' }}>✕</button>
+                </div>
+              ))}
+              <button
+                onClick={() => setPortionSizes(ps => [...ps, { label: '', price: '' }])}
+                style={{ background: C.cream, border: `1.5px dashed ${C.border}`, borderRadius: '10px', padding: '0.5rem 1rem', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.82rem', color: C.muted, width: '100%', marginTop: '0.25rem' }}
+              >+ Add Portion Size</button>
+            </div>
+
+            {/* ── FLAVOURS ── */}
+            <div style={{ gridColumn: '1/-1' }}>
+              <label style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.82rem', color: C.muted, display: 'block', marginBottom: '0.5rem' }}>Flavours (optional)</label>
+              <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.78rem', color: C.muted, margin: '0 0 0.75rem' }}>Add available flavours. Customers choose from these when ordering. Leave empty if not applicable.</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                {flavours.map((f, i) => (
+                  <span key={i} style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: '20px', padding: '0.25rem 0.7rem', fontFamily: 'Nunito, sans-serif', fontSize: '0.82rem', color: C.brown, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    {f}
+                    <button onClick={() => setFlavours(fl => fl.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#B91C1C', fontWeight: 700, padding: 0, lineHeight: 1 }}>✕</button>
+                  </span>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  style={{ ...inputStyle, flex: 1 }}
+                  value={newFlavour}
+                  onChange={e => setNewFlavour(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && newFlavour.trim()) { setFlavours(fl => [...fl, newFlavour.trim()]); setNewFlavour('') } }}
+                  placeholder="e.g. Vanilla, Chocolate, Biscoff"
+                />
+                <button
+                  onClick={() => { if (newFlavour.trim()) { setFlavours(fl => [...fl, newFlavour.trim()]); setNewFlavour('') } }}
+                  style={{ background: C.gold, color: 'white', border: 'none', borderRadius: '10px', padding: '0.5rem 1rem', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.85rem' }}
+                >Add</button>
+              </div>
             </div>
             <div style={{ gridColumn: '1/-1' }}>
               <label style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.82rem', color: C.muted, display: 'block', marginBottom: '0.3rem' }}>

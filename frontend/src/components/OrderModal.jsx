@@ -8,6 +8,8 @@ export default function OrderModal({ product: initialProduct, onClose }) {
   const [step, setStep] = useState(initialProduct ? 1 : 0);
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(initialProduct || null);
+  const [selectedFlavour, setSelectedFlavour] = useState('');
+  const [selectedPortion, setSelectedPortion] = useState(null); // { label, price }
   const [bankDetails, setBankDetails] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [orderResult, setOrderResult] = useState(null);
@@ -28,9 +30,18 @@ export default function OrderModal({ product: initialProduct, onClose }) {
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  const total = selectedProduct && selectedProduct.id !== 'custom'
-    ? selectedProduct.price * form.quantity
-    : 0;
+  // When product changes, reset flavour/portion
+  useEffect(() => {
+    if (selectedProduct && selectedProduct.id !== 'custom') {
+      const portions = selectedProduct.portion_sizes || [];
+      const flavours = selectedProduct.flavours || [];
+      setSelectedPortion(portions.length > 0 ? portions[0] : null);
+      setSelectedFlavour(flavours.length > 0 ? flavours[0] : '');
+    }
+  }, [selectedProduct]);
+
+  const unitPrice = selectedPortion ? parseFloat(selectedPortion.price) || 0 : (selectedProduct?.price || 0);
+  const total = selectedProduct && selectedProduct.id !== 'custom' ? unitPrice * form.quantity : 0;
   const deposit = Math.ceil(total * 0.20 * 100) / 100;
 
   const validate = () => {
@@ -38,6 +49,10 @@ export default function OrderModal({ product: initialProduct, onClose }) {
     if (!form.customer_name.trim()) e.customer_name = 'Name is required';
     if (!form.customer_email.trim() || !/\S+@\S+\.\S+/.test(form.customer_email)) e.customer_email = 'Valid email required';
     if (!form.delivery_date) e.delivery_date = 'Please select a preferred date';
+    // Require flavour if product has flavours
+    if (selectedProduct && selectedProduct.id !== 'custom' && (selectedProduct.flavours || []).length > 0 && !selectedFlavour) {
+      e.flavour = 'Please select a flavour';
+    }
     return e;
   };
 
@@ -56,6 +71,11 @@ export default function OrderModal({ product: initialProduct, onClose }) {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
+      const portionNote = selectedPortion ? `Portion: ${selectedPortion.label}` : '';
+      const flavourNote = selectedFlavour ? `Flavour: ${selectedFlavour}` : '';
+      const optionsNote = [portionNote, flavourNote].filter(Boolean).join(' | ');
+      const fullSpecial = [optionsNote, form.special_requests].filter(Boolean).join('\n');
+
       const result = await createOrder({
         customer_name: form.customer_name,
         customer_email: form.customer_email,
@@ -63,7 +83,7 @@ export default function OrderModal({ product: initialProduct, onClose }) {
         product_id: selectedProduct?.id || '',
         product_name: selectedProduct?.name || 'Custom Order',
         quantity: form.quantity,
-        special_requests: form.special_requests,
+        special_requests: fullSpecial,
         delivery_date: form.delivery_date,
         total: total,
       });
@@ -96,6 +116,12 @@ export default function OrderModal({ product: initialProduct, onClose }) {
     fontSize: '0.85rem',
     color: 'rgb(107, 79, 58)',
     marginBottom: '0.4rem',
+  };
+
+  const pillBase = {
+    fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.82rem',
+    padding: '0.4rem 0.9rem', borderRadius: '50px', cursor: 'pointer',
+    border: '2px solid transparent', transition: 'all 0.15s',
   };
 
   return (
@@ -182,7 +208,6 @@ export default function OrderModal({ product: initialProduct, onClose }) {
                 Your order has been received! Please pay the <strong>20% deposit (£{orderResult.deposit?.toFixed(2) || deposit.toFixed(2)})</strong> via bank transfer to confirm your order.
               </p>
 
-              {/* Reference Code - most prominent */}
               <div style={{
                 background: 'linear-gradient(135deg, rgb(61, 35, 20), rgb(107, 79, 58))',
                 borderRadius: '16px', padding: '1.25rem',
@@ -199,7 +224,6 @@ export default function OrderModal({ product: initialProduct, onClose }) {
                 </p>
               </div>
 
-              {/* Bank Details */}
               {bankDetails && (bankDetails.account_number || bankDetails.bank_name || bankDetails.sort_code) ? (
                 <div style={{
                   background: 'white', borderRadius: '16px', padding: '1.25rem',
@@ -269,39 +293,52 @@ export default function OrderModal({ product: initialProduct, onClose }) {
                 Choose what you'd like to order:
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
-                {products.map(p => (
-                  <div key={p.id} onClick={() => setSelectedProduct(p)} style={{
-                    display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.875rem',
-                    borderRadius: '16px',
-                    border: `2px solid ${selectedProduct?.id === p.id ? 'rgb(201, 150, 58)' : 'rgba(107, 79, 58, 0.15)'}`,
-                    background: selectedProduct?.id === p.id ? 'rgba(201, 150, 58, 0.08)' : 'white',
-                    cursor: 'pointer', transition: 'all 0.2s',
-                  }}>
-                    {p.images && p.images[0] ? (
-                      <img
-                        src={`${API}/uploads/${p.images[0]}`}
-                        alt={p.name}
-                        style={{ width: '56px', height: '56px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }}
-                      />
-                    ) : (
-                      <div style={{ width: '56px', height: '56px', borderRadius: '10px', background: 'rgb(237, 232, 223)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>🧁</div>
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '0.95rem', color: 'rgb(61, 35, 20)' }}>{p.name}</div>
-                      <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.8rem', color: 'rgb(107, 79, 58)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.description}</div>
-                    </div>
-                    <div style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 800, fontSize: '1.1rem', color: 'rgb(201, 150, 58)', flexShrink: 0 }}>
-                      £{typeof p.price === 'number' ? p.price.toFixed(2) : p.price}
-                    </div>
-                    {selectedProduct?.id === p.id && (
-                      <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgb(201, 150, 58)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
+                {products.map(p => {
+                  const portions = p.portion_sizes || [];
+                  const minPrice = portions.length > 0 ? Math.min(...portions.map(s => parseFloat(s.price) || 0)) : p.price;
+                  const maxPrice = portions.length > 0 ? Math.max(...portions.map(s => parseFloat(s.price) || 0)) : p.price;
+                  const priceLabel = portions.length > 1 && minPrice !== maxPrice
+                    ? `from £${minPrice.toFixed(2)}`
+                    : `£${minPrice.toFixed(2)}`;
+                  return (
+                    <div key={p.id} onClick={() => setSelectedProduct(p)} style={{
+                      display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.875rem',
+                      borderRadius: '16px',
+                      border: `2px solid ${selectedProduct?.id === p.id ? 'rgb(201, 150, 58)' : 'rgba(107, 79, 58, 0.15)'}`,
+                      background: selectedProduct?.id === p.id ? 'rgba(201, 150, 58, 0.08)' : 'white',
+                      cursor: 'pointer', transition: 'all 0.2s',
+                    }}>
+                      {p.images && p.images[0] ? (
+                        <img
+                          src={p.images[0].startsWith('http') ? p.images[0] : `${API}/uploads/${p.images[0]}`}
+                          alt={p.name}
+                          style={{ width: '56px', height: '56px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }}
+                        />
+                      ) : (
+                        <div style={{ width: '56px', height: '56px', borderRadius: '10px', background: 'rgb(237, 232, 223)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>🧁</div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '0.95rem', color: 'rgb(61, 35, 20)' }}>{p.name}</div>
+                        <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.78rem', color: 'rgb(107, 79, 58)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.description}</div>
+                        {(p.flavours || []).length > 0 && (
+                          <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.73rem', color: 'rgb(201, 150, 58)', marginTop: '0.15rem' }}>
+                            {p.flavours.length} flavour{p.flavours.length !== 1 ? 's' : ''} available
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
+                      <div style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 800, fontSize: '1rem', color: 'rgb(201, 150, 58)', flexShrink: 0, textAlign: 'right' }}>
+                        {priceLabel}
+                      </div>
+                      {selectedProduct?.id === p.id && (
+                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'rgb(201, 150, 58)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
                 {/* Custom order */}
                 <div onClick={() => setSelectedProduct({ id: 'custom', name: 'Custom Order', price: 0 })} style={{
                   display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.875rem',
@@ -320,28 +357,97 @@ export default function OrderModal({ product: initialProduct, onClose }) {
             </div>
 
           ) : step === 1 ? (
-            /* STEP 1: Customer details */
+            /* STEP 1: Customer details + portion/flavour selectors */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+              {/* Product summary card */}
               {selectedProduct && selectedProduct.id !== 'custom' && (
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem',
-                  background: 'rgba(201, 150, 58, 0.08)', borderRadius: '12px',
-                  border: '1px solid rgba(201, 150, 58, 0.25)', marginBottom: '0.25rem',
+                  background: 'rgba(201, 150, 58, 0.08)', borderRadius: '14px',
+                  border: '1px solid rgba(201, 150, 58, 0.25)', padding: '1rem',
+                  marginBottom: '0.25rem',
                 }}>
-                  {selectedProduct.images?.[0] && (
-                    <img src={`${API}/uploads/${selectedProduct.images[0]}`} alt={selectedProduct.name} style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    {selectedProduct.images?.[0] && (
+                      <img
+                        src={selectedProduct.images[0].startsWith('http') ? selectedProduct.images[0] : `${API}/uploads/${selectedProduct.images[0]}`}
+                        alt={selectedProduct.name}
+                        style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }}
+                      />
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '0.9rem', color: 'rgb(61, 35, 20)' }}>{selectedProduct.name}</div>
+                    </div>
+                    {/* Quantity stepper */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <button onClick={() => setForm(f => ({ ...f, quantity: Math.max(1, f.quantity - 1) }))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid rgba(107,79,58,0.2)', background: 'white', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                      <span style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '1rem', color: 'rgb(61, 35, 20)', minWidth: '20px', textAlign: 'center' }}>{form.quantity}</span>
+                      <button onClick={() => setForm(f => ({ ...f, quantity: f.quantity + 1 }))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid rgba(107,79,58,0.2)', background: 'white', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                    </div>
+                  </div>
+
+                  {/* Portion size selector */}
+                  {(selectedProduct.portion_sizes || []).length > 0 && (
+                    <div style={{ marginBottom: (selectedProduct.flavours || []).length > 0 ? '0.75rem' : 0 }}>
+                      <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.8rem', color: 'rgb(107, 79, 58)', marginBottom: '0.4rem' }}>Portion Size</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                        {selectedProduct.portion_sizes.map((s, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setSelectedPortion(s)}
+                            style={{
+                              ...pillBase,
+                              background: selectedPortion?.label === s.label ? 'rgb(61, 35, 20)' : 'white',
+                              color: selectedPortion?.label === s.label ? 'rgb(237, 232, 223)' : 'rgb(61, 35, 20)',
+                              borderColor: selectedPortion?.label === s.label ? 'rgb(61, 35, 20)' : 'rgba(107, 79, 58, 0.25)',
+                            }}
+                          >
+                            {s.label} — <span style={{ color: selectedPortion?.label === s.label ? 'rgb(232, 184, 109)' : 'rgb(201, 150, 58)', fontWeight: 800 }}>£{parseFloat(s.price).toFixed(2)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '0.9rem', color: 'rgb(61, 35, 20)' }}>{selectedProduct.name}</div>
-                    <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.8rem', color: 'rgb(107, 79, 58)' }}>£{typeof selectedProduct.price === 'number' ? selectedProduct.price.toFixed(2) : selectedProduct.price} each</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <button onClick={() => setForm(f => ({ ...f, quantity: Math.max(1, f.quantity - 1) }))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid rgba(107,79,58,0.2)', background: 'white', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-                    <span style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '1rem', color: 'rgb(61, 35, 20)', minWidth: '20px', textAlign: 'center' }}>{form.quantity}</span>
-                    <button onClick={() => setForm(f => ({ ...f, quantity: f.quantity + 1 }))} style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid rgba(107,79,58,0.2)', background: 'white', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                  </div>
+
+                  {/* Flavour selector */}
+                  {(selectedProduct.flavours || []).length > 0 && (
+                    <div>
+                      <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.8rem', color: 'rgb(107, 79, 58)', marginBottom: '0.4rem' }}>
+                        Flavour {errors.flavour && <span style={{ color: '#e53e3e', fontWeight: 400 }}>— {errors.flavour}</span>}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                        {selectedProduct.flavours.map((f, i) => (
+                          <button
+                            key={i}
+                            onClick={() => { setSelectedFlavour(f); setErrors(e => ({ ...e, flavour: undefined })); }}
+                            style={{
+                              ...pillBase,
+                              background: selectedFlavour === f ? 'rgb(201, 150, 58)' : 'white',
+                              color: selectedFlavour === f ? 'white' : 'rgb(61, 35, 20)',
+                              borderColor: selectedFlavour === f ? 'rgb(201, 150, 58)' : 'rgba(107, 79, 58, 0.25)',
+                            }}
+                          >
+                            {f}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Running total */}
+                  {total > 0 && (
+                    <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(201, 150, 58, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.82rem', color: 'rgb(107, 79, 58)' }}>
+                        {form.quantity} × £{unitPrice.toFixed(2)}
+                      </span>
+                      <span style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 800, fontSize: '1.05rem', color: 'rgb(61, 35, 20)' }}>
+                        Total: £{total.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
+
               <div>
                 <label style={labelStyle}>Full Name *</label>
                 <input type="text" placeholder="Your full name" value={form.customer_name}
@@ -398,13 +504,15 @@ export default function OrderModal({ product: initialProduct, onClose }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {[
                     { label: 'Item', value: selectedProduct?.name || 'Custom Order' },
+                    selectedPortion ? { label: 'Portion', value: selectedPortion.label } : null,
+                    selectedFlavour ? { label: 'Flavour', value: selectedFlavour } : null,
                     { label: 'Quantity', value: form.quantity },
                     { label: 'Name', value: form.customer_name },
                     { label: 'Email', value: form.customer_email },
                     { label: 'Phone', value: form.customer_phone || '—' },
                     { label: 'Date', value: form.delivery_date || '—' },
                     { label: 'Requests', value: form.special_requests || 'None' },
-                  ].map(row => (
+                  ].filter(Boolean).map(row => (
                     <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.3rem 0', borderBottom: '1px solid rgba(107,79,58,0.08)' }}>
                       <span style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.85rem', color: 'rgb(107, 79, 58)' }}>{row.label}</span>
                       <span style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.85rem', fontWeight: 600, color: 'rgb(61, 35, 20)', textAlign: 'right', wordBreak: 'break-word' }}>{row.value}</span>
@@ -416,7 +524,7 @@ export default function OrderModal({ product: initialProduct, onClose }) {
                         <span style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '1rem', color: 'rgb(61, 35, 20)' }}>Total</span>
                         <span style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 800, fontSize: '1.1rem', color: 'rgb(61, 35, 20)' }}>£{total.toFixed(2)}</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', background: 'rgba(201,150,58,0.08)', borderRadius: '8px', padding: '0.5rem 0.75rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '1rem', color: 'rgb(201, 150, 58)' }}>20% Deposit Due Now</span>
                         <span style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 800, fontSize: '1.1rem', color: 'rgb(201, 150, 58)' }}>£{deposit.toFixed(2)}</span>
                       </div>

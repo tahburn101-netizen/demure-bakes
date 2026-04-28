@@ -32,11 +32,13 @@ db.exec(`
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
-    price REAL NOT NULL,
+    price REAL NOT NULL DEFAULT 0,
     category TEXT DEFAULT 'other',
     images TEXT DEFAULT '[]',
     available INTEGER DEFAULT 1,
     sort_order INTEGER DEFAULT 0,
+    flavours TEXT DEFAULT '[]',
+    portion_sizes TEXT DEFAULT '[]',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
   );
@@ -134,7 +136,10 @@ if (!bankExists) {
 }
 
 // ==================== SEED DATA ====================
-const SEED_VERSION = '4';
+const SEED_VERSION = '5';
+// Add new columns if they don't exist (safe migration)
+try { db.exec('ALTER TABLE products ADD COLUMN flavours TEXT DEFAULT "[]"'); } catch {}
+try { db.exec('ALTER TABLE products ADD COLUMN portion_sizes TEXT DEFAULT "[]"'); } catch {}
 const currentSeedVersion = db.prepare("SELECT value FROM settings WHERE key = 'seed_version'").get();
 if (!currentSeedVersion || currentSeedVersion.value !== SEED_VERSION) {
   db.prepare('DELETE FROM products').run();
@@ -151,63 +156,77 @@ if (productCount.count === 0) {
   const seedProducts = [
     {
       name: "Valentine's Cupcakes",
-      description: "Beautifully decorated cupcakes with fondant hearts, roses and love-themed toppers. Perfect for gifting your special someone. Available in boxes of 3 or 6.",
-      price: 18.00,
+      description: "Beautifully decorated cupcakes with fondant hearts, roses and love-themed toppers. Perfect for gifting your special someone.",
+      price: 0,
       category: 'cupcakes',
       images: [`${B}/uploads/valentines-cupcakes-1.jpg`, `${B}/uploads/valentines-cupcakes-2.jpg`],
+      flavours: ['Vanilla', 'Chocolate', 'Strawberry', 'Lemon'],
+      portion_sizes: [{ label: 'Box of 3', price: 12 }, { label: 'Box of 6', price: 18 }, { label: 'Box of 12', price: 32 }],
       sort_order: 1
     },
     {
       name: "Oreo Brownie Slab",
-      description: "Rich, fudgy brownie slab loaded with whole Oreo cookies and a generous drizzle of smooth caramel sauce. Perfect for sharing at events and parties. Serves 6-8.",
-      price: 20.00,
+      description: "Rich, fudgy brownie slab loaded with whole Oreo cookies and a generous drizzle of smooth caramel sauce. Perfect for sharing at events and parties.",
+      price: 0,
       category: 'brownies',
       images: [`${B}/uploads/oreo-brownie-slab-1.jpg`, `${B}/uploads/oreo-caramel-brownie-1.jpg`],
+      flavours: ['Oreo', 'Oreo Caramel', 'Biscoff', 'Nutella'],
+      portion_sizes: [{ label: 'Serves 4-6', price: 16 }, { label: 'Serves 8-10', price: 24 }, { label: 'Serves 12+', price: 35 }],
       sort_order: 2
     },
     {
       name: "Oreo Brownie Box",
-      description: "Indulgent Oreo-topped brownies with milk chocolate drizzle, presented in a beautiful windowed gift box. Available in boxes of 4 or 6 — perfect for gifting.",
-      price: 16.00,
+      description: "Indulgent Oreo-topped brownies with milk chocolate drizzle, presented in a beautiful windowed gift box — perfect for gifting.",
+      price: 0,
       category: 'brownies',
       images: [`${B}/uploads/oreo-brownie-box-1.jpg`, `${B}/uploads/oreo-brownie-box-2.jpg`, `${B}/uploads/oreo-brownie-box-3.jpg`],
+      flavours: ['Oreo', 'Biscoff', 'Caramel', 'Mixed'],
+      portion_sizes: [{ label: 'Box of 4', price: 12 }, { label: 'Box of 6', price: 16 }, { label: 'Box of 9', price: 22 }],
       sort_order: 3
     },
     {
       name: "Easter Cupcakes",
-      description: "Spring-inspired cupcakes with pastel buttercream swirls and mini egg toppers. A delightful Easter treat for the whole family. Available in boxes of 3 or 6.",
-      price: 15.00,
+      description: "Spring-inspired cupcakes with pastel buttercream swirls and mini egg toppers. A delightful Easter treat for the whole family.",
+      price: 0,
       category: 'cupcakes',
       images: [`${B}/uploads/easter-cupcakes-1.jpg`, `${B}/uploads/easter-cupcakes-2.jpg`],
+      flavours: ['Vanilla', 'Chocolate', 'Lemon', 'Strawberry'],
+      portion_sizes: [{ label: 'Box of 3', price: 11 }, { label: 'Box of 6', price: 15 }, { label: 'Box of 12', price: 28 }],
       sort_order: 4
     },
     {
       name: "Easter Treat Box",
       description: "A gorgeous windowed gift box with Easter cupcakes and chocolate brownies — the perfect spring gift for family and friends.",
-      price: 22.00,
-      category: 'boxes',
+      price: 22,
+      category: 'tray bakes',
       images: [`${B}/uploads/easter-treat-box-1.jpg`],
+      flavours: [],
+      portion_sizes: [{ label: 'Standard Box', price: 22 }],
       sort_order: 5
     },
     {
       name: "Easter Basket Hamper",
-      description: "A stunning wicker basket filled with Easter cupcakes, chocolate brownies, a Cadbury Creme Egg, Kinder Chocolate and adorable chick decorations. The ultimate Easter gift.",
-      price: 35.00,
-      category: 'hampers',
+      description: "A stunning wicker basket filled with Easter cupcakes, chocolate brownies, a Cadbury Creme Egg, Kinder Chocolate and adorable chick decorations.",
+      price: 35,
+      category: 'tray bakes',
       images: [`${B}/uploads/easter-basket-1.jpg`, `${B}/uploads/easter-basket-2.jpg`, `${B}/uploads/easter-basket-3.jpg`, `${B}/uploads/easter-basket-4.jpg`],
+      flavours: [],
+      portion_sizes: [{ label: 'Standard Hamper', price: 35 }],
       sort_order: 6
     },
     {
       name: "Mother's Day Cupcakes",
-      description: "Box of 12 beautifully decorated cupcakes with pastel buttercream swirls and personalised toppers. The perfect way to celebrate the special woman in your life.",
-      price: 28.00,
+      description: "Box of beautifully decorated cupcakes with pastel buttercream swirls and personalised toppers. The perfect way to celebrate the special woman in your life.",
+      price: 0,
       category: 'cupcakes',
       images: [`${B}/uploads/mothers-day-cupcakes-1.jpg`, `${B}/uploads/mothers-day-cupcakes-2.jpg`],
+      flavours: ['Vanilla', 'Chocolate', 'Strawberry', 'Lemon'],
+      portion_sizes: [{ label: 'Box of 6', price: 18 }, { label: 'Box of 12', price: 28 }, { label: 'Box of 24', price: 50 }],
       sort_order: 7
     }
   ];
-  const insertProd = db.prepare('INSERT INTO products (id, name, description, price, category, images, available, sort_order) VALUES (?, ?, ?, ?, ?, ?, 1, ?)');
-  seedProducts.forEach(p => insertProd.run(randomUUID(), p.name, p.description, p.price, p.category, JSON.stringify(p.images), p.sort_order));
+  const insertProd = db.prepare('INSERT INTO products (id, name, description, price, category, images, available, sort_order, flavours, portion_sizes) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)');
+  seedProducts.forEach(p => insertProd.run(randomUUID(), p.name, p.description, p.price, p.category, JSON.stringify(p.images), p.sort_order, JSON.stringify(p.flavours || []), JSON.stringify(p.portion_sizes || [])));
   console.log(`Seeded ${seedProducts.length} products`);
 }
 
@@ -357,54 +376,66 @@ app.get('/api/products', (req, res) => {
   res.json(products.map(p => {
     const images = JSON.parse(p.images || '[]');
     const fullImages = images.map(img => img.startsWith('http') ? img : `${BACKEND_URL}/uploads/${img}`);
-    return { ...p, images: fullImages, available: p.available === 1 };
+    return {
+      ...p,
+      images: fullImages,
+      available: p.available === 1,
+      flavours: JSON.parse(p.flavours || '[]'),
+      portion_sizes: JSON.parse(p.portion_sizes || '[]')
+    };
   }));
 });
 
 app.get('/api/products/:id', (req, res) => {
   const p = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!p) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...p, images: JSON.parse(p.images || '[]'), available: p.available === 1 });
+  res.json({
+    ...p,
+    images: JSON.parse(p.images || '[]'),
+    available: p.available === 1,
+    flavours: JSON.parse(p.flavours || '[]'),
+    portion_sizes: JSON.parse(p.portion_sizes || '[]')
+  });
 });
 
 app.post('/api/products', authMiddleware, upload.array('images', 10), (req, res) => {
   const body = req.body || {};
-  const { name, description, price, category, available, sort_order } = body;
+  const { name, description, price, category, available, sort_order, flavours, portion_sizes } = body;
   if (!name) return res.status(400).json({ error: 'Product name is required' });
   const id = randomUUID();
-  // Handle uploaded files or JSON images array
   let imageUrls = [];
   if (req.files && req.files.length > 0) {
     imageUrls = req.files.map(f => `${BACKEND_URL}/uploads/${f.filename}`);
   } else if (body.images) {
     imageUrls = Array.isArray(body.images) ? body.images : JSON.parse(body.images || '[]');
   }
-  db.prepare('INSERT INTO products (id, name, description, price, category, images, available, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-    id, name, description || '', parseFloat(price) || 0, category || 'other',
-    JSON.stringify(imageUrls), available === 'false' || available === false ? 0 : 1, parseInt(sort_order) || 0
+  const parsedFlavours = flavours ? (typeof flavours === 'string' ? JSON.parse(flavours) : flavours) : [];
+  const parsedPortions = portion_sizes ? (typeof portion_sizes === 'string' ? JSON.parse(portion_sizes) : portion_sizes) : [];
+  db.prepare('INSERT INTO products (id, name, description, price, category, images, available, sort_order, flavours, portion_sizes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+    id, name, description || '', parseFloat(price) || 0, category || 'brownies',
+    JSON.stringify(imageUrls), available === 'false' || available === false ? 0 : 1,
+    parseInt(sort_order) || 0, JSON.stringify(parsedFlavours), JSON.stringify(parsedPortions)
   );
   const p = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
-  res.status(201).json({ ...p, images: JSON.parse(p.images), available: p.available === 1 });
+  res.status(201).json({ ...p, images: JSON.parse(p.images), available: p.available === 1, flavours: JSON.parse(p.flavours || '[]'), portion_sizes: JSON.parse(p.portion_sizes || '[]') });
 });
 
 app.put('/api/products/:id', authMiddleware, upload.array('images', 10), (req, res) => {
   const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Not found' });
   const body = req.body || {};
-  const { name, description, price, category, available, sort_order } = body;
-  // Handle uploaded files or keep existing images
+  const { name, description, price, category, available, sort_order, flavours, portion_sizes } = body;
   let imageUrls;
   if (req.files && req.files.length > 0) {
-    // New files uploaded — use them
     imageUrls = req.files.map(f => `${BACKEND_URL}/uploads/${f.filename}`);
   } else if (body.images) {
-    // Images provided as JSON string or array
     imageUrls = Array.isArray(body.images) ? body.images : JSON.parse(body.images || '[]');
   } else {
-    // No new images — keep existing
     imageUrls = null;
   }
-  db.prepare(`UPDATE products SET name=?, description=?, price=?, category=?, images=?, available=?, sort_order=?, updated_at=datetime('now') WHERE id=?`).run(
+  const parsedFlavours = flavours !== undefined ? (typeof flavours === 'string' ? JSON.parse(flavours) : flavours) : JSON.parse(existing.flavours || '[]');
+  const parsedPortions = portion_sizes !== undefined ? (typeof portion_sizes === 'string' ? JSON.parse(portion_sizes) : portion_sizes) : JSON.parse(existing.portion_sizes || '[]');
+  db.prepare(`UPDATE products SET name=?, description=?, price=?, category=?, images=?, available=?, sort_order=?, flavours=?, portion_sizes=?, updated_at=datetime('now') WHERE id=?`).run(
     name || existing.name,
     description !== undefined ? description : existing.description,
     price !== undefined ? parseFloat(price) : existing.price,
@@ -412,10 +443,12 @@ app.put('/api/products/:id', authMiddleware, upload.array('images', 10), (req, r
     imageUrls !== null ? JSON.stringify(imageUrls) : existing.images,
     available !== undefined ? (available === 'false' || available === false ? 0 : 1) : existing.available,
     sort_order !== undefined ? parseInt(sort_order) : existing.sort_order,
+    JSON.stringify(parsedFlavours),
+    JSON.stringify(parsedPortions),
     req.params.id
   );
   const p = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
-  res.json({ ...p, images: JSON.parse(p.images), available: p.available === 1 });
+  res.json({ ...p, images: JSON.parse(p.images), available: p.available === 1, flavours: JSON.parse(p.flavours || '[]'), portion_sizes: JSON.parse(p.portion_sizes || '[]') });
 });
 
 app.delete('/api/products/:id', authMiddleware, (req, res) => {

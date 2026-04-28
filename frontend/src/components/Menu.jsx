@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getProducts, getSiteContent } from '../api';
 
-const CATEGORIES = ['all', 'brownies', 'cupcakes', 'boxes', 'hampers'];
+const CATEGORIES = ['all', 'brownies', 'cupcakes', 'loaf cakes', 'tray bakes'];
 
 function ImageCarousel({ images, name }) {
   const [current, setCurrent] = useState(0);
@@ -122,10 +122,19 @@ function ProductCard({ product, onOrder }) {
   const catColors = {
     brownies: { bg: 'rgba(61,35,20,0.08)', text: 'rgb(61,35,20)' },
     cupcakes: { bg: 'rgba(245,198,204,0.5)', text: 'rgb(180,80,100)' },
-    boxes: { bg: 'rgba(201,150,58,0.12)', text: 'rgb(140,90,10)' },
-    hampers: { bg: 'rgba(107,79,58,0.1)', text: 'rgb(107,79,58)' },
+    'loaf cakes': { bg: 'rgba(201,150,58,0.12)', text: 'rgb(140,90,10)' },
+    'tray bakes': { bg: 'rgba(107,79,58,0.1)', text: 'rgb(107,79,58)' },
     other: { bg: 'rgba(201,150,58,0.1)', text: 'rgb(140,90,10)' },
   };
+
+  // Compute price display from portion_sizes
+  const portions = product.portion_sizes || [];
+  const flavours = product.flavours || [];
+  const minPrice = portions.length > 0 ? Math.min(...portions.map(s => parseFloat(s.price) || 0)) : Number(product.price);
+  const maxPrice = portions.length > 0 ? Math.max(...portions.map(s => parseFloat(s.price) || 0)) : Number(product.price);
+  const priceLabel = portions.length > 1 && minPrice !== maxPrice
+    ? `from £${minPrice.toFixed(2)}`
+    : `£${minPrice.toFixed(2)}`;
   const cc = catColors[product.category] || catColors.other;
 
   return (
@@ -181,12 +190,42 @@ function ProductCard({ product, onOrder }) {
         }}>
           {product.description}
         </p>
+        {/* Portion size pills */}
+        {portions.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.75rem' }}>
+            {portions.map((s, i) => (
+              <span key={i} style={{
+                fontFamily: 'Nunito, sans-serif', fontSize: '0.72rem', fontWeight: 700,
+                padding: '0.2rem 0.6rem', borderRadius: '50px',
+                background: 'rgba(201,150,58,0.1)', color: 'rgb(140,90,10)',
+                border: '1px solid rgba(201,150,58,0.25)',
+              }}>
+                {s.label} — £{parseFloat(s.price).toFixed(2)}
+              </span>
+            ))}
+          </div>
+        )}
+        {/* Flavour tags */}
+        {flavours.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.75rem' }}>
+            {flavours.map((f, i) => (
+              <span key={i} style={{
+                fontFamily: 'Nunito, sans-serif', fontSize: '0.7rem', fontWeight: 600,
+                padding: '0.15rem 0.5rem', borderRadius: '50px',
+                background: 'rgba(61,35,20,0.06)', color: 'rgb(107,79,58)',
+                border: '1px solid rgba(61,35,20,0.12)',
+              }}>
+                {f}
+              </span>
+            ))}
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
           <span style={{
             fontFamily: '"Baloo 2", cursive', fontWeight: 800,
-            fontSize: '1.4rem', color: 'rgb(201,150,58)',
+            fontSize: '1.3rem', color: 'rgb(201,150,58)',
           }}>
-            £{Number(product.price).toFixed(2)}
+            {priceLabel}
           </span>
           <button
             onClick={() => onOrder(product)}
