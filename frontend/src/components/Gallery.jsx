@@ -9,13 +9,18 @@ export default function Gallery() {
   const [content, setContent] = useState({});
 
   useEffect(() => {
+    console.log('Fetching gallery/instagram feed...');
     getInstagramFeed()
       .then(data => {
+        console.log('Gallery data received:', data);
         setPosts(data.posts || []);
         setSource(data.source || 'gallery');
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(err => {
+        console.error('Failed to fetch gallery:', err);
+        setLoading(false);
+      });
     getSiteContent().then(setContent).catch(() => {});
   }, []);
 

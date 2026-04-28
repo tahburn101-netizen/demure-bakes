@@ -463,7 +463,7 @@ function ProductsTab({ token }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
           {products.map(p => (
             <div key={p.id} style={{ background: 'white', borderRadius: '16px', overflow: 'hidden', border: `1px solid ${C.border}`, opacity: p.available === false ? 0.6 : 1 }}>
-              {p.images?.[0] && <img src={`${API}/uploads/${p.images[0]}`} alt={p.name} style={{ width: '100%', height: '160px', objectFit: 'cover' }} />}
+              {p.images?.[0] && <img src={p.images[0].startsWith('http') ? p.images[0] : `${API}/uploads/${p.images[0]}`} alt={p.name} style={{ width: '100%', height: '160px', objectFit: 'cover' }} />}
               <div style={{ padding: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
                   <h4 style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 800, fontSize: '1rem', color: C.brown, margin: 0 }}>{p.name}</h4>
@@ -803,7 +803,7 @@ function GalleryTab({ token }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0.75rem' }}>
           {gallery.map(img => (
             <div key={img.id} style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', aspectRatio: '1' }}>
-              <img src={`${API}/uploads/${img.filename}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={img.url ? (img.url.startsWith('http') ? img.url : `${API}/uploads/${img.url}`) : (img.filename ? `${API}/uploads/${img.filename}` : '')} alt={img.alt || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <button onClick={() => del(img.id)} style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', color: 'white', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
             </div>
           ))}

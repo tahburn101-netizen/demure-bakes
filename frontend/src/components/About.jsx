@@ -10,7 +10,7 @@ export default function About() {
     getSiteContent().then(setContent).catch(() => {});
   }, []);
 
-  const c = (key, fallback) => content[key] !== undefined ? content[key] : fallback;
+  const c = (key, fallback) => (content && content[key] !== undefined) ? content[key] : fallback;
 
   return (
     <section id="about" style={{ background: 'rgb(250,247,242)', padding: '5rem 0', overflow: 'hidden' }}>

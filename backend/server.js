@@ -354,7 +354,11 @@ app.post('/api/auth/change-password', authMiddleware, (req, res) => {
 
 app.get('/api/products', (req, res) => {
   const products = db.prepare('SELECT * FROM products ORDER BY sort_order ASC, created_at DESC').all();
-  res.json(products.map(p => ({ ...p, images: JSON.parse(p.images || '[]'), available: p.available === 1 })));
+  res.json(products.map(p => {
+    const images = JSON.parse(p.images || '[]');
+    const fullImages = images.map(img => img.startsWith('http') ? img : `${BACKEND_URL}/uploads/${img}`);
+    return { ...p, images: fullImages, available: p.available === 1 };
+  }));
 });
 
 app.get('/api/products/:id', (req, res) => {
@@ -363,29 +367,51 @@ app.get('/api/products/:id', (req, res) => {
   res.json({ ...p, images: JSON.parse(p.images || '[]'), available: p.available === 1 });
 });
 
-app.post('/api/products', authMiddleware, (req, res) => {
-  const { name, description, price, category, images, available, sort_order } = req.body;
+app.post('/api/products', authMiddleware, upload.array('images', 10), (req, res) => {
+  const body = req.body || {};
+  const { name, description, price, category, available, sort_order } = body;
+  if (!name) return res.status(400).json({ error: 'Product name is required' });
   const id = randomUUID();
+  // Handle uploaded files or JSON images array
+  let imageUrls = [];
+  if (req.files && req.files.length > 0) {
+    imageUrls = req.files.map(f => `${BACKEND_URL}/uploads/${f.filename}`);
+  } else if (body.images) {
+    imageUrls = Array.isArray(body.images) ? body.images : JSON.parse(body.images || '[]');
+  }
   db.prepare('INSERT INTO products (id, name, description, price, category, images, available, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
-    id, name, description || '', parseFloat(price), category || 'other',
-    JSON.stringify(images || []), available !== false ? 1 : 0, sort_order || 0
+    id, name, description || '', parseFloat(price) || 0, category || 'other',
+    JSON.stringify(imageUrls), available === 'false' || available === false ? 0 : 1, parseInt(sort_order) || 0
   );
   const p = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
   res.status(201).json({ ...p, images: JSON.parse(p.images), available: p.available === 1 });
 });
 
-app.put('/api/products/:id', authMiddleware, (req, res) => {
+app.put('/api/products/:id', authMiddleware, upload.array('images', 10), (req, res) => {
   const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Not found' });
-  const { name, description, price, category, images, available, sort_order } = req.body;
+  const body = req.body || {};
+  const { name, description, price, category, available, sort_order } = body;
+  // Handle uploaded files or keep existing images
+  let imageUrls;
+  if (req.files && req.files.length > 0) {
+    // New files uploaded — use them
+    imageUrls = req.files.map(f => `${BACKEND_URL}/uploads/${f.filename}`);
+  } else if (body.images) {
+    // Images provided as JSON string or array
+    imageUrls = Array.isArray(body.images) ? body.images : JSON.parse(body.images || '[]');
+  } else {
+    // No new images — keep existing
+    imageUrls = null;
+  }
   db.prepare(`UPDATE products SET name=?, description=?, price=?, category=?, images=?, available=?, sort_order=?, updated_at=datetime('now') WHERE id=?`).run(
     name || existing.name,
     description !== undefined ? description : existing.description,
     price !== undefined ? parseFloat(price) : existing.price,
     category || existing.category,
-    images !== undefined ? JSON.stringify(images) : existing.images,
-    available !== undefined ? (available ? 1 : 0) : existing.available,
-    sort_order !== undefined ? sort_order : existing.sort_order,
+    imageUrls !== null ? JSON.stringify(imageUrls) : existing.images,
+    available !== undefined ? (available === 'false' || available === false ? 0 : 1) : existing.available,
+    sort_order !== undefined ? parseInt(sort_order) : existing.sort_order,
     req.params.id
   );
   const p = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
@@ -542,7 +568,10 @@ app.get('/api/instagram-feed', (req, res) => {
   // Instagram's public API is heavily restricted; fall back to gallery images
   const gallery = db.prepare('SELECT * FROM gallery_images ORDER BY sort_order ASC, created_at DESC LIMIT 12').all();
   res.json({
-    posts: gallery.map(g => ({ id: g.id, url: g.url, thumbnail: g.url, caption: g.alt, link: 'https://www.instagram.com/demurebakes' })),
+    posts: gallery.map(g => {
+      const fullUrl = g.url.startsWith('http') ? g.url : `${BACKEND_URL}/uploads/${g.url}`;
+      return { id: g.id, url: fullUrl, thumbnail: fullUrl, caption: g.alt, link: 'https://www.instagram.com/demurebakes' };
+    }),
     source: 'gallery',
     instagram_url: 'https://www.instagram.com/demurebakes'
   });

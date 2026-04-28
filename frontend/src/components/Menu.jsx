@@ -214,9 +214,17 @@ export default function Menu({ onOrder }) {
   const [activeCategory, setActiveCategory] = useState('all');
 
   useEffect(() => {
+    console.log('Fetching products...');
     getProducts()
-      .then(data => { setProducts(data); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(data => {
+        console.log('Products received:', data);
+        setProducts(data || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch products:', err);
+        setLoading(false);
+      });
   }, []);
 
   const filtered = activeCategory === 'all'
@@ -232,7 +240,7 @@ export default function Menu({ onOrder }) {
   );
 
   return (
-    <section id="menu" style={{ background: 'rgb(250,247,242)', padding: '5rem 0' }}>
+    <section id="menu" style={{ background: 'rgb(250,247,242)', padding: '5rem 0', minHeight: '400px' }}>
       <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1.5rem' }}>
         {/* Section header */}
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
@@ -261,8 +269,21 @@ export default function Menu({ onOrder }) {
           </p>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '4rem 0' }}>
+            <div style={{
+              width: '48px', height: '48px', borderRadius: '50%',
+              border: '3px solid rgba(201,150,58,0.2)', borderTopColor: 'rgb(201,150,58)',
+              animation: 'menuSpin 0.8s linear infinite', margin: '0 auto 1rem',
+            }} />
+            <p style={{ fontFamily: 'Nunito, sans-serif', color: 'rgb(107,79,58)' }}>Loading our delicious treats...</p>
+          </div>
+        )}
+
         {/* Category filter */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
+        {!loading && products.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
           {availableCategories.map(cat => (
             <button
               key={cat}
