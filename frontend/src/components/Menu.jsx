@@ -284,24 +284,25 @@ export default function Menu({ onOrder }) {
         {/* Category filter */}
         {!loading && products.length > 0 && (
           <div style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
-          {availableCategories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              style={{
-                fontFamily: '"Baloo 2", cursive', fontWeight: 600, fontSize: '0.875rem',
-                padding: '0.45rem 1.2rem', borderRadius: '50px',
-                border: activeCategory === cat ? 'none' : '2px solid rgba(107,79,58,0.2)',
-                background: activeCategory === cat ? 'rgb(61,35,20)' : 'white',
-                color: activeCategory === cat ? 'rgb(237,232,223)' : 'rgb(107,79,58)',
-                cursor: 'pointer', transition: 'all 0.2s', textTransform: 'capitalize',
-                boxShadow: activeCategory === cat ? '0 4px 12px rgba(61,35,20,0.2)' : 'none',
-              }}
-            >
-              {cat === 'all' ? 'All Items' : cat}
-            </button>
-          ))}
-        </div>
+            {availableCategories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                style={{
+                  fontFamily: '"Baloo 2", cursive', fontWeight: 600, fontSize: '0.875rem',
+                  padding: '0.45rem 1.2rem', borderRadius: '50px',
+                  border: activeCategory === cat ? 'none' : '2px solid rgba(107,79,58,0.2)',
+                  background: activeCategory === cat ? 'rgb(61,35,20)' : 'white',
+                  color: activeCategory === cat ? 'rgb(237,232,223)' : 'rgb(107,79,58)',
+                  cursor: 'pointer', transition: 'all 0.2s', textTransform: 'capitalize',
+                  boxShadow: activeCategory === cat ? '0 4px 12px rgba(61,35,20,0.2)' : 'none',
+                }}
+              >
+                {cat === 'all' ? 'All Items' : cat}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Products grid */}
         {loading ? (
