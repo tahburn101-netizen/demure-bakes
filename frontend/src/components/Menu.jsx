@@ -116,6 +116,17 @@ function ImageCarousel({ images, name }) {
   );
 }
 
+const ALLERGEN_ICONS = {
+  'Gluten': '🌾',
+  'Nuts': '🥜',
+  'Dairy': '🥛',
+  'Eggs': '🥚',
+  'Soy': '🫘',
+  'Vegan': '🌱',
+  'Gluten-Free': '✅',
+  'Nut-Free': '✅',
+};
+
 function ProductCard({ product, onOrder }) {
   const [hovered, setHovered] = useState(false);
 
@@ -154,6 +165,21 @@ function ProductCard({ product, onOrder }) {
     >
       <div style={{ position: 'relative' }}>
         <ImageCarousel images={product.images} name={product.name} />
+        {/* Sold-Out overlay */}
+        {!product.available && (
+          <div style={{
+            position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
+            borderRadius: '16px 16px 0 0', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', zIndex: 3,
+          }}>
+            <span style={{
+              background: 'rgba(220,38,38,0.9)', color: 'white',
+              fontWeight: 800, fontSize: '1.1rem', padding: '0.5rem 1.5rem',
+              borderRadius: '50px', letterSpacing: '0.05em',
+              fontFamily: '"Baloo 2", cursive',
+            }}>Sold Out</span>
+          </div>
+        )}
         <div style={{
           position: 'absolute', top: '12px', left: '12px',
           background: cc.bg, backdropFilter: 'blur(8px)',
@@ -220,6 +246,25 @@ function ProductCard({ product, onOrder }) {
             ))}
           </div>
         )}
+        {/* Allergen / dietary tags */}
+        {product.allergens && product.allergens.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.75rem' }}>
+            {product.allergens.map((a, i) => {
+              const isPositive = ['Vegan', 'Gluten-Free', 'Nut-Free'].includes(a);
+              return (
+                <span key={i} style={{
+                  fontFamily: 'Nunito, sans-serif', fontSize: '0.68rem', fontWeight: 700,
+                  padding: '0.15rem 0.5rem', borderRadius: '50px',
+                  background: isPositive ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.08)',
+                  color: isPositive ? 'rgb(22,163,74)' : 'rgb(185,28,28)',
+                  border: `1px solid ${isPositive ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.2)'}`,
+                }}>
+                  {ALLERGEN_ICONS[a] || '⚠️'} {a}
+                </span>
+              );
+            })}
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
           <span style={{
             fontFamily: '"Baloo 2", cursive', fontWeight: 800,
@@ -227,20 +272,29 @@ function ProductCard({ product, onOrder }) {
           }}>
             {priceLabel}
           </span>
-          <button
-            onClick={() => onOrder(product)}
-            style={{
-              background: 'rgb(61,35,20)', color: 'rgb(237,232,223)',
-              border: 'none', borderRadius: '50px', padding: '0.5rem 1.25rem',
+          {product.available !== false ? (
+            <button
+              onClick={() => onOrder(product)}
+              style={{
+                background: 'rgb(61,35,20)', color: 'rgb(237,232,223)',
+                border: 'none', borderRadius: '50px', padding: '0.5rem 1.25rem',
+                fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '0.875rem',
+                cursor: 'pointer', transition: 'all 0.2s',
+                boxShadow: '0 4px 12px rgba(61,35,20,0.2)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgb(201,150,58)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgb(61,35,20)'; e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              Order Now
+            </button>
+          ) : (
+            <span style={{
               fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '0.875rem',
-              cursor: 'pointer', transition: 'all 0.2s',
-              boxShadow: '0 4px 12px rgba(61,35,20,0.2)',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgb(201,150,58)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgb(61,35,20)'; e.currentTarget.style.transform = 'scale(1)'; }}
-          >
-            Order Now
-          </button>
+              color: 'rgb(185,28,28)', padding: '0.5rem 1.25rem',
+              background: 'rgba(239,68,68,0.08)', borderRadius: '50px',
+              border: '1px solid rgba(239,68,68,0.2)',
+            }}>Sold Out</span>
+          )}
         </div>
       </div>
     </div>

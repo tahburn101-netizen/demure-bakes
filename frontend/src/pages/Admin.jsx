@@ -53,6 +53,9 @@ const TABS = [
   { id: 'orders',    label: '📦 Orders' },
   { id: 'products',  label: '🧁 Products' },
   { id: 'reviews',   label: '⭐ Reviews' },
+  { id: 'pending_reviews', label: '🔔 Pending Reviews' },
+  { id: 'faqs',      label: '❓ FAQs' },
+  { id: 'slots',     label: '🗓️ Slots' },
   { id: 'content',   label: '✏️ Site Text' },
   { id: 'bank',      label: '🏦 Bank Details' },
   { id: 'gallery',   label: '🖼️ Gallery' },
@@ -125,12 +128,15 @@ export default function Admin() {
 
         {/* Main */}
         <main style={{ flex: 1, overflowY: 'auto', padding: '1.75rem', minWidth: 0 }}>
-          {tab === 'orders'   && <OrdersTab token={token} />}
-          {tab === 'products' && <ProductsTab token={token} />}
-          {tab === 'reviews'  && <ReviewsTab token={token} />}
-          {tab === 'content'  && <ContentTab token={token} />}
-          {tab === 'bank'     && <BankTab token={token} />}
-          {tab === 'gallery'  && <GalleryTab token={token} />}
+          {tab === 'orders'          && <OrdersTab token={token} />}
+          {tab === 'products'        && <ProductsTab token={token} />}
+          {tab === 'reviews'         && <ReviewsTab token={token} />}
+          {tab === 'pending_reviews' && <PendingReviewsTab token={token} />}
+          {tab === 'faqs'            && <FAQsTab token={token} />}
+          {tab === 'slots'           && <SlotsTab token={token} />}
+          {tab === 'content'         && <ContentTab token={token} />}
+          {tab === 'bank'            && <BankTab token={token} />}
+          {tab === 'gallery'         && <GalleryTab token={token} />}
         </main>
       </div>
 
@@ -361,7 +367,9 @@ function ProductsTab({ token }) {
   const [form, setForm] = useState({ name: '', description: '', price: '', category: 'brownies', available: true })
   const [flavours, setFlavours] = useState([]) // array of strings
   const [portionSizes, setPortionSizes] = useState([]) // array of { label, price }
+  const [allergens, setAllergens] = useState([]) // array of strings
   const [newFlavour, setNewFlavour] = useState('')
+  const [newAllergen, setNewAllergen] = useState('')
   const [files, setFiles] = useState([])
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
@@ -380,7 +388,9 @@ function ProductsTab({ token }) {
     setForm({ name: '', description: '', price: '', category: 'brownies', available: true })
     setFlavours([])
     setPortionSizes([])
+    setAllergens([])
     setNewFlavour('')
+    setNewAllergen('')
     setFiles([])
     setMsg('')
   }
@@ -389,7 +399,9 @@ function ProductsTab({ token }) {
     setForm({ name: p.name, description: p.description || '', price: String(p.price || ''), category: p.category || 'brownies', available: p.available !== false })
     setFlavours(Array.isArray(p.flavours) ? p.flavours : [])
     setPortionSizes(Array.isArray(p.portion_sizes) ? p.portion_sizes : [])
+    setAllergens(Array.isArray(p.allergens) ? p.allergens : [])
     setNewFlavour('')
+    setNewAllergen('')
     setFiles([])
     setMsg('')
   }
@@ -409,6 +421,7 @@ function ProductsTab({ token }) {
       fd.append('available', form.available)
       fd.append('flavours', JSON.stringify(flavours))
       fd.append('portion_sizes', JSON.stringify(portionSizes))
+      fd.append('allergens', JSON.stringify(allergens))
       files.forEach(f => fd.append('images', f))
       const url = editing === 'new' ? `${API}/api/products` : `${API}/api/products/${editing}`
       const method = editing === 'new' ? 'POST' : 'PUT'
@@ -508,6 +521,36 @@ function ProductsTab({ token }) {
                 >Add</button>
               </div>
             </div>
+            {/* ── ALLERGEN / DIETARY TAGS ── */}
+            <div style={{ gridColumn: '1/-1' }}>
+              <label style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.82rem', color: C.muted, display: 'block', marginBottom: '0.5rem' }}>Allergens &amp; Dietary Info (optional)</label>
+              <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.78rem', color: C.muted, margin: '0 0 0.5rem' }}>e.g. Gluten, Nuts, Dairy, Eggs, Vegan, Gluten-Free, Nut-Free</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                {allergens.map((a, i) => {
+                  const isPositive = ['Vegan', 'Gluten-Free', 'Nut-Free'].includes(a)
+                  return (
+                    <span key={i} style={{ background: isPositive ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.08)', border: `1px solid ${isPositive ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.2)'}`, color: isPositive ? 'rgb(22,163,74)' : 'rgb(185,28,28)', borderRadius: '20px', padding: '0.25rem 0.7rem', fontFamily: 'Nunito, sans-serif', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      {a}
+                      <button onClick={() => setAllergens(al => al.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 700, padding: 0, lineHeight: 1 }}>✕</button>
+                    </span>
+                  )
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  style={{ ...inputStyle, flex: 1 }}
+                  value={newAllergen}
+                  onChange={e => setNewAllergen(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && newAllergen.trim()) { setAllergens(al => [...al, newAllergen.trim()]); setNewAllergen('') } }}
+                  placeholder="e.g. Gluten, Vegan, Nut-Free"
+                />
+                <button
+                  onClick={() => { if (newAllergen.trim()) { setAllergens(al => [...al, newAllergen.trim()]); setNewAllergen('') } }}
+                  style={{ background: C.gold, color: 'white', border: 'none', borderRadius: '10px', padding: '0.5rem 1rem', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.85rem' }}
+                >Add</button>
+              </div>
+            </div>
+
             <div style={{ gridColumn: '1/-1' }}>
               <label style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.82rem', color: C.muted, display: 'block', marginBottom: '0.3rem' }}>
                 Product Images {editing !== 'new' && '(upload new to add/replace)'}
@@ -889,6 +932,247 @@ function GalleryTab({ token }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ─── PENDING REVIEWS TAB ─── */
+function PendingReviewsTab({ token }) {
+  const [reviews, setReviews] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [msg, setMsg] = useState('')
+
+  const load = () => {
+    setLoading(true)
+    apiFetch('/api/reviews/pending', {}, token)
+      .then(d => { setReviews(d || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }
+  useEffect(load, [])
+
+  const approve = async (id) => {
+    try {
+      await apiFetch(`/api/reviews/${id}/approve`, { method: 'PUT' }, token)
+      setMsg('✓ Review approved and published!')
+      load()
+    } catch (e) { setMsg('Error: ' + e.message) }
+  }
+
+  const reject = async (id) => {
+    if (!confirm('Delete this review permanently?')) return
+    try {
+      await apiFetch(`/api/reviews/${id}`, { method: 'DELETE' }, token)
+      setMsg('✓ Review deleted.')
+      load()
+    } catch (e) { setMsg('Error: ' + e.message) }
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 800, fontSize: '1.5rem', color: C.brown, marginBottom: '1.5rem' }}>
+        🔔 Pending Reviews
+      </h2>
+      {msg && <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.85rem', color: msg.startsWith('✓') ? '#166534' : '#B91C1C', background: msg.startsWith('✓') ? '#DCFCE7' : '#FEE2E2', padding: '0.75rem 1rem', borderRadius: '10px', marginBottom: '1rem' }}>{msg}</div>}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: C.muted, fontFamily: 'Nunito, sans-serif' }}>Loading...</div>
+      ) : reviews.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: C.muted, fontFamily: 'Nunito, sans-serif' }}>
+          🎉 No pending reviews — you're all caught up!
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {reviews.map(r => (
+            <div key={r.id} style={{ background: 'white', borderRadius: '16px', padding: '1.25rem', boxShadow: '0 2px 12px rgba(61,35,20,0.08)', border: `1px solid ${C.border}` }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                    <span style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, color: C.brown }}>{r.author}</span>
+                    <span style={{ color: '#F59E0B', fontSize: '0.9rem' }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                    {r.order_reference && <span style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.75rem', color: C.muted, background: 'rgba(201,150,58,0.1)', padding: '0.1rem 0.5rem', borderRadius: '50px' }}>{r.order_reference}</span>}
+                  </div>
+                  <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.9rem', color: C.mid, margin: 0, lineHeight: 1.6 }}>{r.text}</p>
+                  <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.75rem', color: C.muted, margin: '0.5rem 0 0' }}>{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                  <Btn variant="success" onClick={() => approve(r.id)}>✓ Approve</Btn>
+                  <Btn variant="danger" onClick={() => reject(r.id)}>✕ Delete</Btn>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── FAQs TAB ─── */
+function FAQsTab({ token }) {
+  const [faqs, setFaqs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [msg, setMsg] = useState('')
+  const [editing, setEditing] = useState(null) // null = list, 'new' = new, id = edit
+  const [form, setForm] = useState({ question: '', answer: '', sort_order: 0 })
+
+  const load = () => {
+    setLoading(true)
+    apiFetch('/api/faqs', {}, token)
+      .then(d => { setFaqs(d || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }
+  useEffect(load, [])
+
+  const startNew = () => { setForm({ question: '', answer: '', sort_order: faqs.length }); setEditing('new') }
+  const startEdit = (faq) => { setForm({ question: faq.question, answer: faq.answer, sort_order: faq.sort_order }); setEditing(faq.id) }
+
+  const save = async () => {
+    if (!form.question.trim() || !form.answer.trim()) { setMsg('Please fill in both question and answer.'); return }
+    try {
+      if (editing === 'new') {
+        await apiFetch('/api/faqs', { method: 'POST', body: JSON.stringify(form) }, token)
+        setMsg('✓ FAQ added!')
+      } else {
+        await apiFetch(`/api/faqs/${editing}`, { method: 'PUT', body: JSON.stringify(form) }, token)
+        setMsg('✓ FAQ updated!')
+      }
+      setEditing(null)
+      load()
+    } catch (e) { setMsg('Error: ' + e.message) }
+  }
+
+  const del = async (id) => {
+    if (!confirm('Delete this FAQ?')) return
+    try {
+      await apiFetch(`/api/faqs/${id}`, { method: 'DELETE' }, token)
+      setMsg('✓ FAQ deleted.')
+      load()
+    } catch (e) { setMsg('Error: ' + e.message) }
+  }
+
+  if (editing !== null) {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+          <Btn variant="ghost" onClick={() => setEditing(null)}>← Back</Btn>
+          <h2 style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 800, fontSize: '1.5rem', color: C.brown, margin: 0 }}>
+            {editing === 'new' ? 'New FAQ' : 'Edit FAQ'}
+          </h2>
+        </div>
+        {msg && <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.85rem', color: msg.startsWith('✓') ? '#166534' : '#B91C1C', background: msg.startsWith('✓') ? '#DCFCE7' : '#FEE2E2', padding: '0.75rem 1rem', borderRadius: '10px', marginBottom: '1rem' }}>{msg}</div>}
+        <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 2px 12px rgba(61,35,20,0.08)', display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '640px' }}>
+          <div>
+            <label style={{ display: 'block', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.85rem', color: C.brown, marginBottom: '0.4rem' }}>Question *</label>
+            <input style={inputStyle} value={form.question} onChange={e => setForm(f => ({ ...f, question: e.target.value }))} placeholder="e.g. How far in advance do I need to order?" />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.85rem', color: C.brown, marginBottom: '0.4rem' }}>Answer *</label>
+            <textarea style={{ ...inputStyle, minHeight: '120px', resize: 'vertical' }} value={form.answer} onChange={e => setForm(f => ({ ...f, answer: e.target.value }))} placeholder="Type the answer here..." />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.85rem', color: C.brown, marginBottom: '0.4rem' }}>Sort Order</label>
+            <input type="number" style={{ ...inputStyle, width: '100px' }} value={form.sort_order} onChange={e => setForm(f => ({ ...f, sort_order: parseInt(e.target.value) || 0 }))} />
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <Btn variant="gold" onClick={save}>💾 Save FAQ</Btn>
+            <Btn variant="ghost" onClick={() => setEditing(null)}>Cancel</Btn>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <h2 style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 800, fontSize: '1.5rem', color: C.brown, margin: 0 }}>❓ FAQs</h2>
+        <Btn variant="gold" onClick={startNew}>+ Add FAQ</Btn>
+      </div>
+      {msg && <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.85rem', color: msg.startsWith('✓') ? '#166534' : '#B91C1C', background: msg.startsWith('✓') ? '#DCFCE7' : '#FEE2E2', padding: '0.75rem 1rem', borderRadius: '10px', marginBottom: '1rem' }}>{msg}</div>}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: C.muted, fontFamily: 'Nunito, sans-serif' }}>Loading...</div>
+      ) : faqs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: C.muted, fontFamily: 'Nunito, sans-serif' }}>No FAQs yet. Add your first one!</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {faqs.map(faq => (
+            <div key={faq.id} style={{ background: 'white', borderRadius: '14px', padding: '1rem 1.25rem', boxShadow: '0 2px 10px rgba(61,35,20,0.07)', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, color: C.brown, margin: '0 0 0.35rem', fontSize: '0.95rem' }}>{faq.question}</p>
+                <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.85rem', color: C.muted, margin: 0, lineHeight: 1.5 }}>{faq.answer.length > 120 ? faq.answer.slice(0, 120) + '...' : faq.answer}</p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                <Btn variant="ghost" onClick={() => startEdit(faq)}>✏️ Edit</Btn>
+                <Btn variant="danger" onClick={() => del(faq.id)}>✕</Btn>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── SLOTS TAB ─── */
+function SlotsTab({ token }) {
+  const [slots, setSlots] = useState({ week_label: '', slots_remaining: 5, show_counter: false })
+  const [loading, setLoading] = useState(true)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    apiFetch('/api/slots', {}, token)
+      .then(d => { setSlots(d || { week_label: '', slots_remaining: 5, show_counter: false }); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const save = async () => {
+    try {
+      await apiFetch('/api/slots', { method: 'PUT', body: JSON.stringify(slots) }, token)
+      setMsg('✓ Slot availability updated!')
+    } catch (e) { setMsg('Error: ' + e.message) }
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: C.muted, fontFamily: 'Nunito, sans-serif' }}>Loading...</div>
+
+  return (
+    <div>
+      <h2 style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 800, fontSize: '1.5rem', color: C.brown, marginBottom: '0.5rem' }}>🗓️ Order Slots</h2>
+      <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.9rem', color: C.muted, marginBottom: '1.5rem' }}>
+        Control the urgency banner shown at the top of the website. When enabled, customers will see how many slots are left for the week.
+      </p>
+      {msg && <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.85rem', color: msg.startsWith('✓') ? '#166534' : '#B91C1C', background: msg.startsWith('✓') ? '#DCFCE7' : '#FEE2E2', padding: '0.75rem 1rem', borderRadius: '10px', marginBottom: '1rem' }}>{msg}</div>}
+      <div style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 2px 12px rgba(61,35,20,0.08)', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ fontFamily: '"Baloo 2", cursive', fontWeight: 700, color: C.brown, margin: 0 }}>Show Slot Counter Banner</p>
+            <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.82rem', color: C.muted, margin: '0.2rem 0 0' }}>Displays urgency banner at the top of the homepage</p>
+          </div>
+          <label style={{ position: 'relative', display: 'inline-block', width: '48px', height: '26px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={slots.show_counter} onChange={e => setSlots(s => ({ ...s, show_counter: e.target.checked }))} style={{ opacity: 0, width: 0, height: 0 }} />
+            <span style={{
+              position: 'absolute', inset: 0, borderRadius: '13px', transition: '0.3s',
+              background: slots.show_counter ? C.gold : '#D1D5DB',
+            }}>
+              <span style={{
+                position: 'absolute', top: '3px', left: slots.show_counter ? '25px' : '3px',
+                width: '20px', height: '20px', borderRadius: '50%', background: 'white',
+                transition: '0.3s', boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+              }} />
+            </span>
+          </label>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.85rem', color: C.brown, marginBottom: '0.4rem' }}>Week Label</label>
+          <input style={inputStyle} value={slots.week_label} onChange={e => setSlots(s => ({ ...s, week_label: e.target.value }))} placeholder="e.g. this weekend, w/c 5 May" />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.85rem', color: C.brown, marginBottom: '0.4rem' }}>Slots Remaining</label>
+          <input type="number" min="0" max="99" style={{ ...inputStyle, width: '100px' }} value={slots.slots_remaining} onChange={e => setSlots(s => ({ ...s, slots_remaining: parseInt(e.target.value) || 0 }))} />
+          <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '0.78rem', color: C.muted, margin: '0.4rem 0 0' }}>
+            🔥 Banner turns orange/red when ≤ 2 slots remain. Set to 0 to show "No slots available".
+          </p>
+        </div>
+        <Btn variant="gold" onClick={save} style={{ alignSelf: 'flex-start' }}>💾 Save</Btn>
+      </div>
     </div>
   )
 }

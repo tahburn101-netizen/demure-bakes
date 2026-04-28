@@ -96,6 +96,38 @@ export default function HowItWorks() {
             </div>
           ))}
         </div>
+        {/* Video embed — How to Order */}
+        <div style={{ marginTop: '4rem', textAlign: 'center' }}>
+          <p style={{
+            fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '0.78rem',
+            color: 'rgb(107,79,58)', textTransform: 'uppercase', letterSpacing: '0.08em',
+            marginBottom: '0.75rem',
+          }}>Watch how it works</p>
+          <div style={{
+            position: 'relative', paddingBottom: '56.25%', height: 0,
+            borderRadius: '20px', overflow: 'hidden',
+            boxShadow: '0 12px 40px rgba(61,35,20,0.15)',
+            maxWidth: '640px', margin: '0 auto',
+          }}>
+            <iframe
+              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+              title="How to order from Demure Bakes"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{
+                position: 'absolute', top: 0, left: 0,
+                width: '100%', height: '100%',
+              }}
+            />
+          </div>
+          <p style={{
+            fontFamily: 'Nunito, sans-serif', fontSize: '0.85rem',
+            color: 'rgb(107,79,58)', marginTop: '0.75rem',
+          }}>
+            You can update this video URL from the Admin Panel → Site Text
+          </p>
+        </div>
       </div>
     </section>
   );

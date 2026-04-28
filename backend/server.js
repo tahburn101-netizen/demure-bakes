@@ -105,7 +105,38 @@ db.exec(`
     status TEXT DEFAULT 'pending',
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS faqs (
+    id TEXT PRIMARY KEY,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0,
+    visible INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS slot_availability (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    slots_remaining INTEGER DEFAULT 5,
+    slots_total INTEGER DEFAULT 5,
+    week_label TEXT DEFAULT 'This Weekend',
+    show_counter INTEGER DEFAULT 1,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS pending_reviews (
+    id TEXT PRIMARY KEY,
+    author TEXT NOT NULL,
+    text TEXT NOT NULL,
+    rating INTEGER DEFAULT 5,
+    order_reference TEXT DEFAULT '',
+    status TEXT DEFAULT 'pending',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
+
+// Safe migrations for new columns
+try { db.exec('ALTER TABLE products ADD COLUMN allergens TEXT DEFAULT "[]"'); } catch {}
 
 // ==================== ADMIN USER SETUP ====================
 // Always ensure demiadmin exists with correct password
@@ -136,7 +167,7 @@ if (!bankExists) {
 }
 
 // ==================== SEED DATA ====================
-const SEED_VERSION = '6';
+const SEED_VERSION = '7';
 // Add new columns if they don't exist (safe migration)
 try { db.exec('ALTER TABLE products ADD COLUMN flavours TEXT DEFAULT "[]"'); } catch {}
 try { db.exec('ALTER TABLE products ADD COLUMN portion_sizes TEXT DEFAULT "[]"'); } catch {}
@@ -264,6 +295,29 @@ if (galleryCount.count === 0) {
   const insertGal = db.prepare('INSERT INTO gallery_images (id, url, alt, sort_order) VALUES (?, ?, ?, ?)');
   seedGallery.forEach(g => insertGal.run(randomUUID(), g.url, g.alt, g.sort_order));
   console.log(`Seeded ${seedGallery.length} gallery images`);
+}
+
+// Seed FAQs
+const faqCount = db.prepare('SELECT COUNT(*) as count FROM faqs').get();
+if (faqCount.count === 0) {
+  const seedFaqs = [
+    { question: 'How far in advance do I need to order?', answer: 'We recommend ordering at least 3–5 days in advance to ensure we can accommodate your request. For large or custom orders, please give us 7+ days notice.', sort_order: 1 },
+    { question: 'Do you deliver?', answer: 'Currently we offer collection only. We are based in [your area] and will provide the collection address once your order is confirmed.', sort_order: 2 },
+    { question: 'What is your deposit policy?', answer: 'We require a 20% deposit at the time of ordering to secure your slot. The remaining balance is due on collection. Deposits are non-refundable if cancelled within 48 hours of the collection date.', sort_order: 3 },
+    { question: 'Can I request a custom order?', answer: 'Absolutely! We love creating bespoke treats. Get in touch via Instagram or email to discuss your ideas and we will do our best to bring your vision to life.', sort_order: 4 },
+    { question: 'Are your products suitable for people with allergies?', answer: 'All our products are made in a home kitchen that handles nuts, gluten, dairy, and eggs. We cannot guarantee an allergen-free environment. Please check the allergen information on each product and contact us if you have specific concerns.', sort_order: 5 },
+    { question: 'How should I store my order?', answer: 'Most of our products are best enjoyed within 3 days of collection. Brownies can be stored in an airtight container at room temperature. Cupcakes are best kept in a cool, dry place away from direct sunlight.', sort_order: 6 }
+  ];
+  const insertFaq = db.prepare('INSERT INTO faqs (id, question, answer, sort_order, visible) VALUES (?, ?, ?, ?, 1)');
+  seedFaqs.forEach(f => insertFaq.run(randomUUID(), f.question, f.answer, f.sort_order));
+  console.log(`Seeded ${seedFaqs.length} FAQs`);
+}
+
+// Seed slot availability
+const slotExists = db.prepare('SELECT id FROM slot_availability WHERE id = 1').get();
+if (!slotExists) {
+  db.prepare('INSERT INTO slot_availability (id, slots_remaining, slots_total, week_label, show_counter) VALUES (1, 3, 5, "This Weekend", 1)').run();
+  console.log('Seeded slot availability');
 }
 
 // Seed default site content
@@ -704,6 +758,121 @@ app.put('/api/settings', authMiddleware, (req, res) => {
   const { key, value } = req.body;
   db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, value);
   res.json({ key, value });
+});
+
+// ==================== FAQs ====================
+
+app.get('/api/faqs', (req, res) => {
+  const faqs = db.prepare('SELECT * FROM faqs WHERE visible = 1 ORDER BY sort_order ASC, created_at ASC').all();
+  res.json(faqs);
+});
+
+app.get('/api/faqs/all', authMiddleware, (req, res) => {
+  res.json(db.prepare('SELECT * FROM faqs ORDER BY sort_order ASC').all());
+});
+
+app.post('/api/faqs', authMiddleware, (req, res) => {
+  const { question, answer, sort_order, visible } = req.body;
+  if (!question || !answer) return res.status(400).json({ error: 'Question and answer required' });
+  const id = randomUUID();
+  db.prepare('INSERT INTO faqs (id, question, answer, sort_order, visible) VALUES (?, ?, ?, ?, ?)').run(id, question, answer, sort_order || 0, visible !== false ? 1 : 0);
+  res.status(201).json(db.prepare('SELECT * FROM faqs WHERE id = ?').get(id));
+});
+
+app.put('/api/faqs/:id', authMiddleware, (req, res) => {
+  const existing = db.prepare('SELECT * FROM faqs WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+  const { question, answer, sort_order, visible } = req.body;
+  db.prepare('UPDATE faqs SET question=?, answer=?, sort_order=?, visible=? WHERE id=?').run(
+    question || existing.question, answer || existing.answer,
+    sort_order !== undefined ? sort_order : existing.sort_order,
+    visible !== undefined ? (visible ? 1 : 0) : existing.visible,
+    req.params.id
+  );
+  res.json(db.prepare('SELECT * FROM faqs WHERE id = ?').get(req.params.id));
+});
+
+app.delete('/api/faqs/:id', authMiddleware, (req, res) => {
+  if (!db.prepare('SELECT id FROM faqs WHERE id = ?').get(req.params.id)) return res.status(404).json({ error: 'Not found' });
+  db.prepare('DELETE FROM faqs WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// ==================== SLOT AVAILABILITY ====================
+
+app.get('/api/slots', (req, res) => {
+  const slot = db.prepare('SELECT * FROM slot_availability WHERE id = 1').get();
+  res.json(slot || { slots_remaining: 0, slots_total: 5, week_label: 'This Weekend', show_counter: 1 });
+});
+
+app.put('/api/slots', authMiddleware, (req, res) => {
+  const { slots_remaining, slots_total, week_label, show_counter } = req.body;
+  const existing = db.prepare('SELECT * FROM slot_availability WHERE id = 1').get();
+  if (!existing) {
+    db.prepare('INSERT INTO slot_availability (id, slots_remaining, slots_total, week_label, show_counter) VALUES (1, ?, ?, ?, ?)').run(
+      slots_remaining ?? 3, slots_total ?? 5, week_label || 'This Weekend', show_counter !== false ? 1 : 0
+    );
+  } else {
+    db.prepare("UPDATE slot_availability SET slots_remaining=?, slots_total=?, week_label=?, show_counter=?, updated_at=datetime('now') WHERE id=1").run(
+      slots_remaining !== undefined ? slots_remaining : existing.slots_remaining,
+      slots_total !== undefined ? slots_total : existing.slots_total,
+      week_label || existing.week_label,
+      show_counter !== undefined ? (show_counter ? 1 : 0) : existing.show_counter
+    );
+  }
+  res.json(db.prepare('SELECT * FROM slot_availability WHERE id = 1').get());
+});
+
+// ==================== PENDING REVIEWS ====================
+
+// Public: submit a review (goes to pending moderation)
+app.post('/api/reviews/submit', (req, res) => {
+  const { author, text, rating, order_reference } = req.body;
+  if (!author || !text) return res.status(400).json({ error: 'Name and review text are required' });
+  const id = randomUUID();
+  db.prepare('INSERT INTO pending_reviews (id, author, text, rating, order_reference, status) VALUES (?, ?, ?, ?, ?, "pending")').run(
+    id, author, text, Math.min(5, Math.max(1, parseInt(rating) || 5)), order_reference || ''
+  );
+  res.status(201).json({ success: true, message: 'Thank you! Your review has been submitted and will appear after approval.' });
+});
+
+// Admin: get all pending reviews
+app.get('/api/reviews/pending', authMiddleware, (req, res) => {
+  res.json(db.prepare('SELECT * FROM pending_reviews ORDER BY created_at DESC').all());
+});
+
+// Admin: approve a pending review (moves to testimonials)
+app.post('/api/reviews/:id/approve', authMiddleware, (req, res) => {
+  const review = db.prepare('SELECT * FROM pending_reviews WHERE id = ?').get(req.params.id);
+  if (!review) return res.status(404).json({ error: 'Not found' });
+  const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM testimonials').get().m || 0;
+  db.prepare('INSERT INTO testimonials (id, author, text, rating, visible, sort_order) VALUES (?, ?, ?, ?, 1, ?)').run(
+    randomUUID(), review.author, review.text, review.rating, maxOrder + 1
+  );
+  db.prepare('UPDATE pending_reviews SET status = "approved" WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// Admin: reject a pending review
+app.post('/api/reviews/:id/reject', authMiddleware, (req, res) => {
+  if (!db.prepare('SELECT id FROM pending_reviews WHERE id = ?').get(req.params.id)) return res.status(404).json({ error: 'Not found' });
+  db.prepare('UPDATE pending_reviews SET status = "rejected" WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// Admin: delete a pending review
+app.delete('/api/reviews/:id', authMiddleware, (req, res) => {
+  if (!db.prepare('SELECT id FROM pending_reviews WHERE id = ?').get(req.params.id)) return res.status(404).json({ error: 'Not found' });
+  db.prepare('DELETE FROM pending_reviews WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// ==================== ORDER TRACKING ====================
+
+app.get('/api/orders/track/:reference', (req, res) => {
+  const order = db.prepare('SELECT id, reference, customer_name, product_name, quantity, total, deposit, deposit_paid, status, delivery_date, created_at FROM orders WHERE reference = ?').get(req.params.reference.toUpperCase());
+  if (!order) return res.status(404).json({ error: 'Order not found. Please check your reference code.' });
+  res.json({ ...order, deposit_paid: order.deposit_paid === 1 });
 });
 
 // ==================== HEALTH CHECK ====================
