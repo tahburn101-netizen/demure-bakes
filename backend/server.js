@@ -1,9 +1,10 @@
+'use strict';
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { randomUUID: uuidv4 } = require('crypto');
+const { randomUUID } = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Database = require('better-sqlite3');
@@ -15,21 +16,17 @@ const BACKEND_URL = process.env.BACKEND_URL || 'https://demure-bakes-backend-pro
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 // Database setup
 const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'data', 'demure.db');
 const dataDir = path.dirname(dbPath);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
-// Initialize database schema
+// ==================== SCHEMA ====================
 db.exec(`
   CREATE TABLE IF NOT EXISTS products (
     id TEXT PRIMARY KEY,
@@ -76,6 +73,12 @@ db.exec(`
     value TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS site_content (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS admin_users (
     id TEXT PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
@@ -85,42 +88,63 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS orders (
     id TEXT PRIMARY KEY,
+    reference TEXT UNIQUE NOT NULL,
     customer_name TEXT NOT NULL,
     customer_email TEXT NOT NULL,
-    customer_phone TEXT,
-    product_id TEXT,
-    product_name TEXT,
+    customer_phone TEXT DEFAULT '',
+    product_id TEXT DEFAULT '',
+    product_name TEXT DEFAULT '',
     quantity INTEGER DEFAULT 1,
-    special_requests TEXT,
-    delivery_date TEXT,
+    special_requests TEXT DEFAULT '',
+    delivery_date TEXT DEFAULT '',
+    total REAL DEFAULT 0,
+    deposit REAL DEFAULT 0,
+    deposit_paid INTEGER DEFAULT 0,
     status TEXT DEFAULT 'pending',
-    total REAL,
     created_at TEXT DEFAULT (datetime('now'))
   );
 `);
 
-// Seed default admin user if not exists
-const adminExists = db.prepare('SELECT id FROM admin_users WHERE username = ?').get('admin');
-if (!adminExists) {
-  const hash = bcrypt.hashSync('demurebakes2026', 10);
-  db.prepare('INSERT INTO admin_users (id, username, password_hash) VALUES (?, ?, ?)').run(uuidv4(), 'admin', hash);
+// ==================== ADMIN USER SETUP ====================
+// Always ensure demiadmin exists with correct password
+const ADMIN_USERNAME = 'demiadmin';
+const ADMIN_PASSWORD = 'molink123';
+
+const existingAdmin = db.prepare('SELECT id, username, password_hash FROM admin_users WHERE username = ?').get(ADMIN_USERNAME);
+if (!existingAdmin) {
+  // Remove any old admin users and create fresh
+  db.prepare('DELETE FROM admin_users').run();
+  const hash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+  db.prepare('INSERT INTO admin_users (id, username, password_hash) VALUES (?, ?, ?)').run(randomUUID(), ADMIN_USERNAME, hash);
+  console.log('Created admin user: demiadmin');
+} else {
+  // Ensure password is correct (reset if needed)
+  const passwordCorrect = bcrypt.compareSync(ADMIN_PASSWORD, existingAdmin.password_hash);
+  if (!passwordCorrect) {
+    const hash = bcrypt.hashSync(ADMIN_PASSWORD, 10);
+    db.prepare('UPDATE admin_users SET password_hash = ? WHERE username = ?').run(hash, ADMIN_USERNAME);
+    console.log('Reset admin password for demiadmin');
+  }
 }
 
-// Seed default bank details row
+// ==================== BANK DETAILS SETUP ====================
 const bankExists = db.prepare('SELECT id FROM bank_details WHERE id = 1').get();
 if (!bankExists) {
   db.prepare('INSERT INTO bank_details (id, bank_name, account_name, account_number, sort_code) VALUES (1, ?, ?, ?, ?)').run('', 'Demure Bakes', '', '');
 }
 
-// Auto-seed products on first startup (or reset if seed version changed)
-const SEED_VERSION = '3';
+// ==================== SEED DATA ====================
+const SEED_VERSION = '4';
 const currentSeedVersion = db.prepare("SELECT value FROM settings WHERE key = 'seed_version'").get();
 if (!currentSeedVersion || currentSeedVersion.value !== SEED_VERSION) {
   db.prepare('DELETE FROM products').run();
   db.prepare('DELETE FROM testimonials').run();
   db.prepare('DELETE FROM gallery_images').run();
+  db.prepare('DELETE FROM site_content').run();
   db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('seed_version', ?)").run(SEED_VERSION);
+  console.log('Resetting seed data to version', SEED_VERSION);
 }
+
 const productCount = db.prepare('SELECT COUNT(*) as count FROM products').get();
 if (productCount.count === 0) {
   const B = BACKEND_URL;
@@ -130,10 +154,7 @@ if (productCount.count === 0) {
       description: "Beautifully decorated cupcakes with fondant hearts, roses and love-themed toppers. Perfect for gifting your special someone. Available in boxes of 3 or 6.",
       price: 18.00,
       category: 'cupcakes',
-      images: [
-        `${B}/uploads/valentines-cupcakes-1.jpg`,
-        `${B}/uploads/valentines-cupcakes-2.jpg`
-      ],
+      images: [`${B}/uploads/valentines-cupcakes-1.jpg`, `${B}/uploads/valentines-cupcakes-2.jpg`],
       sort_order: 1
     },
     {
@@ -141,10 +162,7 @@ if (productCount.count === 0) {
       description: "Rich, fudgy brownie slab loaded with whole Oreo cookies and a generous drizzle of smooth caramel sauce. Perfect for sharing at events and parties. Serves 6-8.",
       price: 20.00,
       category: 'brownies',
-      images: [
-        `${B}/uploads/oreo-brownie-slab-1.jpg`,
-        `${B}/uploads/oreo-caramel-brownie-1.jpg`
-      ],
+      images: [`${B}/uploads/oreo-brownie-slab-1.jpg`, `${B}/uploads/oreo-caramel-brownie-1.jpg`],
       sort_order: 2
     },
     {
@@ -152,11 +170,7 @@ if (productCount.count === 0) {
       description: "Indulgent Oreo-topped brownies with milk chocolate drizzle, presented in a beautiful windowed gift box. Available in boxes of 4 or 6 — perfect for gifting.",
       price: 16.00,
       category: 'brownies',
-      images: [
-        `${B}/uploads/oreo-brownie-box-1.jpg`,
-        `${B}/uploads/oreo-brownie-box-2.jpg`,
-        `${B}/uploads/oreo-brownie-box-3.jpg`
-      ],
+      images: [`${B}/uploads/oreo-brownie-box-1.jpg`, `${B}/uploads/oreo-brownie-box-2.jpg`, `${B}/uploads/oreo-brownie-box-3.jpg`],
       sort_order: 3
     },
     {
@@ -164,10 +178,7 @@ if (productCount.count === 0) {
       description: "Spring-inspired cupcakes with pastel buttercream swirls and mini egg toppers. A delightful Easter treat for the whole family. Available in boxes of 3 or 6.",
       price: 15.00,
       category: 'cupcakes',
-      images: [
-        `${B}/uploads/easter-cupcakes-1.jpg`,
-        `${B}/uploads/easter-cupcakes-2.jpg`
-      ],
+      images: [`${B}/uploads/easter-cupcakes-1.jpg`, `${B}/uploads/easter-cupcakes-2.jpg`],
       sort_order: 4
     },
     {
@@ -183,12 +194,7 @@ if (productCount.count === 0) {
       description: "A stunning wicker basket filled with Easter cupcakes, chocolate brownies, a Cadbury Creme Egg, Kinder Chocolate and adorable chick decorations. The ultimate Easter gift.",
       price: 35.00,
       category: 'hampers',
-      images: [
-        `${B}/uploads/easter-basket-1.jpg`,
-        `${B}/uploads/easter-basket-2.jpg`,
-        `${B}/uploads/easter-basket-3.jpg`,
-        `${B}/uploads/easter-basket-4.jpg`
-      ],
+      images: [`${B}/uploads/easter-basket-1.jpg`, `${B}/uploads/easter-basket-2.jpg`, `${B}/uploads/easter-basket-3.jpg`, `${B}/uploads/easter-basket-4.jpg`],
       sort_order: 6
     },
     {
@@ -196,20 +202,15 @@ if (productCount.count === 0) {
       description: "Box of 12 beautifully decorated cupcakes with pastel buttercream swirls and personalised toppers. The perfect way to celebrate the special woman in your life.",
       price: 28.00,
       category: 'cupcakes',
-      images: [
-        `${B}/uploads/mothers-day-cupcakes-1.jpg`,
-        `${B}/uploads/mothers-day-cupcakes-2.jpg`
-      ],
+      images: [`${B}/uploads/mothers-day-cupcakes-1.jpg`, `${B}/uploads/mothers-day-cupcakes-2.jpg`],
       sort_order: 7
     }
   ];
-
   const insertProd = db.prepare('INSERT INTO products (id, name, description, price, category, images, available, sort_order) VALUES (?, ?, ?, ?, ?, ?, 1, ?)');
-  seedProducts.forEach(p => insertProd.run(uuidv4(), p.name, p.description, p.price, p.category, JSON.stringify(p.images), p.sort_order));
+  seedProducts.forEach(p => insertProd.run(randomUUID(), p.name, p.description, p.price, p.category, JSON.stringify(p.images), p.sort_order));
   console.log(`Seeded ${seedProducts.length} products`);
 }
 
-// Auto-seed testimonials
 const testimonialCount = db.prepare('SELECT COUNT(*) as count FROM testimonials').get();
 if (testimonialCount.count === 0) {
   const seedTestimonials = [
@@ -220,11 +221,10 @@ if (testimonialCount.count === 0) {
     { author: 'Chloe R.', text: "Best brownies I've ever had! The caramel Oreo ones are something else. Packaging is gorgeous too — perfect for gifting.", rating: 5, sort_order: 5 }
   ];
   const insertTest = db.prepare('INSERT INTO testimonials (id, author, text, rating, visible, sort_order) VALUES (?, ?, ?, ?, 1, ?)');
-  seedTestimonials.forEach(t => insertTest.run(uuidv4(), t.author, t.text, t.rating, t.sort_order));
+  seedTestimonials.forEach(t => insertTest.run(randomUUID(), t.author, t.text, t.rating, t.sort_order));
   console.log(`Seeded ${seedTestimonials.length} testimonials`);
 }
 
-// Auto-seed gallery
 const galleryCount = db.prepare('SELECT COUNT(*) as count FROM gallery_images').get();
 if (galleryCount.count === 0) {
   const B = BACKEND_URL;
@@ -243,26 +243,67 @@ if (galleryCount.count === 0) {
     { url: `${B}/uploads/mothers-day-cupcakes-1.jpg`, alt: "Mother's Day Cupcakes", sort_order: 12 }
   ];
   const insertGal = db.prepare('INSERT INTO gallery_images (id, url, alt, sort_order) VALUES (?, ?, ?, ?)');
-  seedGallery.forEach(g => insertGal.run(uuidv4(), g.url, g.alt, g.sort_order));
+  seedGallery.forEach(g => insertGal.run(randomUUID(), g.url, g.alt, g.sort_order));
   console.log(`Seeded ${seedGallery.length} gallery images`);
 }
 
-// Middleware
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// Seed default site content
+const contentCount = db.prepare('SELECT COUNT(*) as count FROM site_content').get();
+if (contentCount.count === 0) {
+  const defaultContent = [
+    { key: 'hero_line1', value: 'Dive into' },
+    { key: 'hero_line2', value: 'Happiness' },
+    { key: 'hero_tagline', value: 'Handcrafted brownies, cupcakes & gift boxes — baked fresh to order with love.' },
+    { key: 'hero_badge1', value: '🎂 Fresh Daily' },
+    { key: 'hero_badge2', value: '✨ Made to Order' },
+    { key: 'menu_heading', value: 'Our Sweet Creations' },
+    { key: 'menu_subheading', value: 'Every treat is handcrafted fresh to order using premium ingredients. Choose your favourite and place your order today.' },
+    { key: 'how_heading', value: 'Simple & Sweet Process' },
+    { key: 'how_step1_title', value: 'Browse & Choose' },
+    { key: 'how_step1_desc', value: 'Pick your favourite treats or request something bespoke.' },
+    { key: 'how_step2_title', value: 'Place Your Order' },
+    { key: 'how_step2_desc', value: 'Fill in your details and confirm with a 20% deposit via bank transfer.' },
+    { key: 'how_step3_title', value: 'We Bake with Love' },
+    { key: 'how_step3_desc', value: 'Your order is freshly baked to perfection for your collection date.' },
+    { key: 'how_step4_title', value: 'Collect & Enjoy' },
+    { key: 'how_step4_desc', value: 'Pick up your beautiful treats and dive into happiness!' },
+    { key: 'gallery_heading', value: 'Fresh from the Kitchen' },
+    { key: 'gallery_subheading', value: 'A look at our latest creations — follow us on Instagram for more' },
+    { key: 'reviews_heading', value: 'What Our Customers Say' },
+    { key: 'about_badge', value: 'About Us' },
+    { key: 'about_heading1', value: 'Baked with love,' },
+    { key: 'about_heading2', value: 'served with joy' },
+    { key: 'about_para1', value: 'Demure Bakes is a home-based artisan bakery dedicated to crafting indulgent treats that bring people together. Every brownie, cupcake, and gift box is made fresh to order using premium ingredients.' },
+    { key: 'about_para2', value: "We believe that great bakes deserve great ingredients — no shortcuts, no compromise. Whether it's a birthday, a special occasion, or simply a treat for yourself, we pour our heart into every single order." },
+    { key: 'about_stat1_num', value: '500+' },
+    { key: 'about_stat1_label', value: 'Happy Customers' },
+    { key: 'about_stat2_num', value: '50+' },
+    { key: 'about_stat2_label', value: 'Flavour Combos' },
+    { key: 'about_stat3_num', value: '100%' },
+    { key: 'about_stat3_label', value: 'Fresh to Order' },
+    { key: 'contact_heading', value: "Let's Create Something Sweet" },
+    { key: 'contact_subheading', value: 'Have a question or want to discuss a custom order? We\'d love to hear from you.' },
+    { key: 'contact_instagram', value: '@demurebakes' },
+    { key: 'contact_email', value: 'hello@demurebakes.co.uk' },
+    { key: 'footer_tagline', value: 'Handcrafted with love, delivered with joy.' }
+  ];
+  const insertContent = db.prepare('INSERT INTO site_content (key, value) VALUES (?, ?)');
+  defaultContent.forEach(c => insertContent.run(c.key, c.value));
+  console.log(`Seeded ${defaultContent.length} site content items`);
+}
+
+// ==================== MIDDLEWARE ====================
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], allowedHeaders: ['Content-Type', 'Authorization'] }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(uploadsDir));
 
-// Multer config for image uploads
+// Multer config
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
+    cb(null, `${randomUUID()}${ext}`);
   }
 });
 const upload = multer({
@@ -270,23 +311,19 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = /jpeg|jpg|png|gif|webp/;
-    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-    const mime = allowed.test(file.mimetype);
-    if (ext && mime) cb(null, true);
+    if (allowed.test(path.extname(file.originalname).toLowerCase()) && allowed.test(file.mimetype)) cb(null, true);
     else cb(new Error('Only image files are allowed'));
   }
 });
 
 // Auth middleware
 const authMiddleware = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  const token = (req.headers['authorization'] || '').split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token provided' });
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
+    req.user = jwt.verify(token, JWT_SECRET);
     next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
 };
@@ -299,7 +336,7 @@ app.post('/api/auth/login', (req, res) => {
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
   res.json({ token, username: user.username });
 });
 
@@ -309,8 +346,7 @@ app.post('/api/auth/change-password', authMiddleware, (req, res) => {
   if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
     return res.status(400).json({ error: 'Current password is incorrect' });
   }
-  const hash = bcrypt.hashSync(newPassword, 10);
-  db.prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?').run(hash, req.user.id);
+  db.prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(newPassword, 10), req.user.id);
   res.json({ success: true });
 });
 
@@ -318,36 +354,30 @@ app.post('/api/auth/change-password', authMiddleware, (req, res) => {
 
 app.get('/api/products', (req, res) => {
   const products = db.prepare('SELECT * FROM products ORDER BY sort_order ASC, created_at DESC').all();
-  const result = products.map(p => ({
-    ...p,
-    images: JSON.parse(p.images || '[]'),
-    available: p.available === 1
-  }));
-  res.json(result);
+  res.json(products.map(p => ({ ...p, images: JSON.parse(p.images || '[]'), available: p.available === 1 })));
 });
 
 app.get('/api/products/:id', (req, res) => {
-  const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
-  if (!product) return res.status(404).json({ error: 'Product not found' });
-  res.json({ ...product, images: JSON.parse(product.images || '[]'), available: product.available === 1 });
+  const p = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Not found' });
+  res.json({ ...p, images: JSON.parse(p.images || '[]'), available: p.available === 1 });
 });
 
 app.post('/api/products', authMiddleware, (req, res) => {
   const { name, description, price, category, images, available, sort_order } = req.body;
-  const id = uuidv4();
-  db.prepare(`INSERT INTO products (id, name, description, price, category, images, available, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
+  const id = randomUUID();
+  db.prepare('INSERT INTO products (id, name, description, price, category, images, available, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
     id, name, description || '', parseFloat(price), category || 'other',
     JSON.stringify(images || []), available !== false ? 1 : 0, sort_order || 0
   );
-  const product = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
-  res.status(201).json({ ...product, images: JSON.parse(product.images), available: product.available === 1 });
+  const p = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+  res.status(201).json({ ...p, images: JSON.parse(p.images), available: p.available === 1 });
 });
 
 app.put('/api/products/:id', authMiddleware, (req, res) => {
-  const { name, description, price, category, images, available, sort_order } = req.body;
   const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Product not found' });
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+  const { name, description, price, category, images, available, sort_order } = req.body;
   db.prepare(`UPDATE products SET name=?, description=?, price=?, category=?, images=?, available=?, sort_order=?, updated_at=datetime('now') WHERE id=?`).run(
     name || existing.name,
     description !== undefined ? description : existing.description,
@@ -358,108 +388,115 @@ app.put('/api/products/:id', authMiddleware, (req, res) => {
     sort_order !== undefined ? sort_order : existing.sort_order,
     req.params.id
   );
-  const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
-  res.json({ ...product, images: JSON.parse(product.images), available: product.available === 1 });
+  const p = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+  res.json({ ...p, images: JSON.parse(p.images), available: p.available === 1 });
 });
 
 app.delete('/api/products/:id', authMiddleware, (req, res) => {
-  const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Product not found' });
+  if (!db.prepare('SELECT id FROM products WHERE id = ?').get(req.params.id)) return res.status(404).json({ error: 'Not found' });
   db.prepare('DELETE FROM products WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 
-// ==================== IMAGE UPLOAD ROUTES ====================
+// ==================== IMAGE UPLOAD ====================
 
 app.post('/api/upload', authMiddleware, upload.array('images', 10), (req, res) => {
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ error: 'No files uploaded' });
-  }
-  const baseUrl = BACKEND_URL;
-  const urls = req.files.map(f => `${baseUrl}/uploads/${f.filename}`);
-  res.json({ urls });
+  if (!req.files || !req.files.length) return res.status(400).json({ error: 'No files uploaded' });
+  res.json({ urls: req.files.map(f => `${BACKEND_URL}/uploads/${f.filename}`) });
 });
 
 app.post('/api/upload/single', authMiddleware, upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const baseUrl = BACKEND_URL;
-  const url = `${baseUrl}/uploads/${req.file.filename}`;
-  res.json({ url });
+  res.json({ url: `${BACKEND_URL}/uploads/${req.file.filename}` });
 });
 
 // ==================== TESTIMONIALS ROUTES ====================
 
 app.get('/api/testimonials', (req, res) => {
-  const testimonials = db.prepare('SELECT * FROM testimonials WHERE visible = 1 ORDER BY sort_order ASC, created_at DESC').all();
-  res.json(testimonials.map(t => ({ ...t, visible: t.visible === 1 })));
+  const rows = db.prepare('SELECT * FROM testimonials WHERE visible = 1 ORDER BY sort_order ASC, created_at DESC').all();
+  res.json(rows.map(t => ({ ...t, visible: t.visible === 1 })));
 });
 
 app.get('/api/testimonials/all', authMiddleware, (req, res) => {
-  const testimonials = db.prepare('SELECT * FROM testimonials ORDER BY sort_order ASC, created_at DESC').all();
-  res.json(testimonials.map(t => ({ ...t, visible: t.visible === 1 })));
+  const rows = db.prepare('SELECT * FROM testimonials ORDER BY sort_order ASC, created_at DESC').all();
+  res.json(rows.map(t => ({ ...t, visible: t.visible === 1 })));
 });
 
 app.post('/api/testimonials', authMiddleware, (req, res) => {
-  const { author, text, rating, visible, sort_order } = req.body;
-  const id = uuidv4();
+  const { author, role, text, content, rating, visible, sort_order } = req.body;
+  const reviewText = text || content || '';
+  const id = randomUUID();
   db.prepare('INSERT INTO testimonials (id, author, text, rating, visible, sort_order) VALUES (?, ?, ?, ?, ?, ?)').run(
-    id, author, text, rating || 5, visible !== false ? 1 : 0, sort_order || 0
+    id, author, reviewText, rating || 5, visible !== false ? 1 : 0, sort_order || 0
   );
-  const testimonial = db.prepare('SELECT * FROM testimonials WHERE id = ?').get(id);
-  res.status(201).json({ ...testimonial, visible: testimonial.visible === 1 });
+  const t = db.prepare('SELECT * FROM testimonials WHERE id = ?').get(id);
+  res.status(201).json({ ...t, visible: t.visible === 1 });
 });
 
 app.put('/api/testimonials/:id', authMiddleware, (req, res) => {
-  const { author, text, rating, visible, sort_order } = req.body;
   const existing = db.prepare('SELECT * FROM testimonials WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Testimonial not found' });
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+  const { author, role, text, content, rating, visible, sort_order } = req.body;
+  const reviewText = text || content;
   db.prepare('UPDATE testimonials SET author=?, text=?, rating=?, visible=?, sort_order=? WHERE id=?').run(
-    author || existing.author, text || existing.text,
+    author || existing.author, reviewText || existing.text,
     rating !== undefined ? rating : existing.rating,
     visible !== undefined ? (visible ? 1 : 0) : existing.visible,
     sort_order !== undefined ? sort_order : existing.sort_order,
     req.params.id
   );
-  const testimonial = db.prepare('SELECT * FROM testimonials WHERE id = ?').get(req.params.id);
-  res.json({ ...testimonial, visible: testimonial.visible === 1 });
+  const t = db.prepare('SELECT * FROM testimonials WHERE id = ?').get(req.params.id);
+  res.json({ ...t, visible: t.visible === 1 });
 });
 
 app.delete('/api/testimonials/:id', authMiddleware, (req, res) => {
-  const existing = db.prepare('SELECT * FROM testimonials WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Testimonial not found' });
+  if (!db.prepare('SELECT id FROM testimonials WHERE id = ?').get(req.params.id)) return res.status(404).json({ error: 'Not found' });
   db.prepare('DELETE FROM testimonials WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 
-// ==================== BANK DETAILS ROUTES ====================
+// ==================== BANK DETAILS ====================
 
 app.get('/api/bank-details', (req, res) => {
-  const details = db.prepare('SELECT * FROM bank_details WHERE id = 1').get();
-  res.json(details || {});
+  res.json(db.prepare('SELECT * FROM bank_details WHERE id = 1').get() || {});
 });
 
 app.put('/api/bank-details', authMiddleware, (req, res) => {
-  const { bank_name, account_name, account_number, sort_code } = req.body;
-  db.prepare(`UPDATE bank_details SET bank_name=?, account_name=?, account_number=?, sort_code=?, updated_at=datetime('now') WHERE id=1`).run(
-    bank_name || '', account_name || '', account_number || '', sort_code || ''
+  const { bank_name, account_name, account_number, sort_code, paypal_email, notes } = req.body;
+  // Ensure paypal_email and notes columns exist
+  try { db.exec('ALTER TABLE bank_details ADD COLUMN paypal_email TEXT DEFAULT ""'); } catch {}
+  try { db.exec('ALTER TABLE bank_details ADD COLUMN notes TEXT DEFAULT ""'); } catch {}
+  db.prepare(`UPDATE bank_details SET bank_name=?, account_name=?, account_number=?, sort_code=?, paypal_email=?, notes=?, updated_at=datetime('now') WHERE id=1`).run(
+    bank_name || '', account_name || '', account_number || '', sort_code || '', paypal_email || '', notes || ''
   );
-  const details = db.prepare('SELECT * FROM bank_details WHERE id = 1').get();
-  res.json(details);
+  res.json(db.prepare('SELECT * FROM bank_details WHERE id = 1').get());
 });
 
-// ==================== GALLERY ROUTES ====================
+// ==================== GALLERY ====================
 
 app.get('/api/gallery', (req, res) => {
-  const images = db.prepare('SELECT * FROM gallery_images ORDER BY sort_order ASC, created_at DESC').all();
-  res.json(images);
+  res.json(db.prepare('SELECT * FROM gallery_images ORDER BY sort_order ASC, created_at DESC').all());
 });
 
-app.post('/api/gallery', authMiddleware, (req, res) => {
-  const { url, alt, sort_order } = req.body;
-  const id = uuidv4();
-  db.prepare('INSERT INTO gallery_images (id, url, alt, sort_order) VALUES (?, ?, ?, ?)').run(id, url, alt || '', sort_order || 0);
-  const image = db.prepare('SELECT * FROM gallery_images WHERE id = ?').get(id);
-  res.status(201).json(image);
+app.post('/api/gallery', authMiddleware, upload.single('image'), (req, res) => {
+  let url, alt, sort_order;
+  if (req.file) {
+    // File upload
+    url = `${BACKEND_URL}/uploads/${req.file.filename}`;
+    alt = req.body.alt || req.file.originalname || '';
+    sort_order = parseInt(req.body.sort_order) || 0;
+  } else {
+    // JSON body
+    url = req.body.url;
+    alt = req.body.alt || '';
+    sort_order = parseInt(req.body.sort_order) || 0;
+  }
+  if (!url) return res.status(400).json({ error: 'No image provided' });
+  const id = randomUUID();
+  // Store just the filename if it's a full URL to our backend
+  const filename = url.includes('/uploads/') ? url.split('/uploads/')[1] : url;
+  db.prepare('INSERT INTO gallery_images (id, url, alt, sort_order) VALUES (?, ?, ?, ?)').run(id, url, alt, sort_order);
+  res.status(201).json({ ...db.prepare('SELECT * FROM gallery_images WHERE id = ?').get(id), filename });
 });
 
 app.delete('/api/gallery/:id', authMiddleware, (req, res) => {
@@ -467,87 +504,137 @@ app.delete('/api/gallery/:id', authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
-// ==================== INSTAGRAM FEED PROXY ====================
-// Fetches the latest posts from @demurebakes using Instagram's public embed API
-app.get('/api/instagram-feed', async (req, res) => {
-  try {
-    const username = 'demurebakes';
-    // Use Instagram's public JSON endpoint
-    const https = require('https');
-    const url = `https://www.instagram.com/${username}/?__a=1&__d=dis`;
+// ==================== SITE CONTENT ====================
 
-    const options = {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json',
-        'Cookie': 'ig_did=1; csrftoken=1;'
-      }
-    };
+app.get('/api/site-content', (req, res) => {
+  const rows = db.prepare('SELECT * FROM site_content').all();
+  // Return as array for admin panel compatibility
+  res.json(rows);
+});
 
-    const request = https.get(url, options, (response) => {
-      let data = '';
-      response.on('data', chunk => { data += chunk; });
-      response.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          const edges = json?.graphql?.user?.edge_owner_to_timeline_media?.edges || [];
-          const posts = edges.slice(0, 12).map(edge => ({
-            id: edge.node.id,
-            url: edge.node.display_url,
-            thumbnail: edge.node.thumbnail_src || edge.node.display_url,
-            caption: edge.node.edge_media_to_caption?.edges?.[0]?.node?.text || '',
-            link: `https://www.instagram.com/p/${edge.node.shortcode}/`,
-            timestamp: edge.node.taken_at_timestamp
-          }));
-          res.json({ posts, source: 'instagram' });
-        } catch (e) {
-          // Instagram blocked the request — return gallery images as fallback
-          const gallery = db.prepare('SELECT * FROM gallery_images ORDER BY sort_order ASC, created_at DESC LIMIT 12').all();
-          res.json({ posts: gallery.map(g => ({ id: g.id, url: g.url, thumbnail: g.url, caption: g.alt, link: 'https://www.instagram.com/demurebakes' })), source: 'gallery' });
-        }
-      });
+// Per-key PUT for admin panel
+app.put('/api/site-content/:key', authMiddleware, (req, res) => {
+  const { key } = req.params;
+  const { value } = req.body;
+  db.prepare("INSERT OR REPLACE INTO site_content (key, value, updated_at) VALUES (?, ?, datetime('now'))").run(key, value || '');
+  res.json({ key, value });
+});
+
+app.put('/api/site-content', authMiddleware, (req, res) => {
+  // Accept either { key, value } or { updates: { key: value, ... } }
+  if (req.body.updates && typeof req.body.updates === 'object') {
+    const updateStmt = db.prepare('INSERT OR REPLACE INTO site_content (key, value, updated_at) VALUES (?, ?, datetime(\'now\'))');
+    const updateMany = db.transaction((updates) => {
+      Object.entries(updates).forEach(([k, v]) => updateStmt.run(k, v));
     });
-    request.on('error', () => {
-      const gallery = db.prepare('SELECT * FROM gallery_images ORDER BY sort_order ASC, created_at DESC LIMIT 12').all();
-      res.json({ posts: gallery.map(g => ({ id: g.id, url: g.url, thumbnail: g.url, caption: g.alt, link: 'https://www.instagram.com/demurebakes' })), source: 'gallery' });
-    });
-  } catch (err) {
-    const gallery = db.prepare('SELECT * FROM gallery_images ORDER BY sort_order ASC, created_at DESC LIMIT 12').all();
-    res.json({ posts: gallery.map(g => ({ id: g.id, url: g.url, thumbnail: g.url, caption: g.alt, link: 'https://www.instagram.com/demurebakes' })), source: 'gallery' });
+    updateMany(req.body.updates);
+    res.json({ success: true, updated: Object.keys(req.body.updates).length });
+  } else {
+    const { key, value } = req.body;
+    db.prepare("INSERT OR REPLACE INTO site_content (key, value, updated_at) VALUES (?, ?, datetime('now'))").run(key, value);
+    res.json({ key, value });
   }
 });
 
-// ==================== ORDERS ROUTES ====================
+// ==================== INSTAGRAM FEED PROXY ====================
+
+app.get('/api/instagram-feed', (req, res) => {
+  // Instagram's public API is heavily restricted; fall back to gallery images
+  const gallery = db.prepare('SELECT * FROM gallery_images ORDER BY sort_order ASC, created_at DESC LIMIT 12').all();
+  res.json({
+    posts: gallery.map(g => ({ id: g.id, url: g.url, thumbnail: g.url, caption: g.alt, link: 'https://www.instagram.com/demurebakes' })),
+    source: 'gallery',
+    instagram_url: 'https://www.instagram.com/demurebakes'
+  });
+});
+
+// ==================== ORDERS ====================
+
+// Generate unique human-readable reference: DB-YYYYMMDD-XXXX
+function generateReference() {
+  const date = new Date();
+  const dateStr = date.getFullYear().toString() +
+    String(date.getMonth() + 1).padStart(2, '0') +
+    String(date.getDate()).padStart(2, '0');
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `DB-${dateStr}-${rand}`;
+}
 
 app.get('/api/orders', authMiddleware, (req, res) => {
   const orders = db.prepare('SELECT * FROM orders ORDER BY created_at DESC').all();
-  res.json(orders);
+  res.json(orders.map(o => ({ ...o, deposit_paid: o.deposit_paid === 1 })));
+});
+
+app.get('/api/orders/:id', authMiddleware, (req, res) => {
+  const order = db.prepare('SELECT * FROM orders WHERE id = ? OR reference = ?').get(req.params.id, req.params.id);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  res.json({ ...order, deposit_paid: order.deposit_paid === 1 });
 });
 
 app.post('/api/orders', (req, res) => {
   const { customer_name, customer_email, customer_phone, product_id, product_name, quantity, special_requests, delivery_date, total } = req.body;
-  const id = uuidv4();
-  db.prepare(`INSERT INTO orders (id, customer_name, customer_email, customer_phone, product_id, product_name, quantity, special_requests, delivery_date, total)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-    id, customer_name, customer_email, customer_phone || '', product_id || '', product_name || '', quantity || 1, special_requests || '', delivery_date || '', total || 0
+  if (!customer_name || !customer_email) return res.status(400).json({ error: 'Name and email are required' });
+
+  const id = randomUUID();
+  let reference = generateReference();
+  // Ensure uniqueness
+  while (db.prepare('SELECT id FROM orders WHERE reference = ?').get(reference)) {
+    reference = generateReference();
+  }
+
+  const totalAmount = parseFloat(total) || 0;
+  const depositAmount = Math.ceil(totalAmount * 0.20 * 100) / 100; // 20% deposit, rounded up to nearest penny
+
+  db.prepare(`INSERT INTO orders (id, reference, customer_name, customer_email, customer_phone, product_id, product_name, quantity, special_requests, delivery_date, total, deposit, deposit_paid, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'pending')`).run(
+    id, reference, customer_name, customer_email, customer_phone || '',
+    product_id || '', product_name || '', parseInt(quantity) || 1,
+    special_requests || '', delivery_date || '', totalAmount, depositAmount
   );
+
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
-  res.status(201).json(order);
+  const bankDetails = db.prepare('SELECT * FROM bank_details WHERE id = 1').get();
+
+  res.status(201).json({
+    ...order,
+    deposit_paid: false,
+    bank_details: bankDetails
+  });
 });
 
-app.put('/api/orders/:id/status', authMiddleware, (req, res) => {
+app.patch('/api/orders/:id/deposit', authMiddleware, (req, res) => {
+  const { deposit_paid } = req.body;
+  const order = db.prepare('SELECT * FROM orders WHERE id = ? OR reference = ?').get(req.params.id, req.params.id);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  db.prepare('UPDATE orders SET deposit_paid = ? WHERE id = ?').run(deposit_paid ? 1 : 0, order.id);
+  const updated = db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id);
+  res.json({ ...updated, deposit_paid: updated.deposit_paid === 1 });
+});
+
+app.patch('/api/orders/:id/status', authMiddleware, (req, res) => {
   const { status } = req.body;
-  db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
-  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
-  res.json(order);
+  const validStatuses = ['pending', 'confirmed', 'baking', 'ready', 'completed', 'cancelled'];
+  if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  const order = db.prepare('SELECT * FROM orders WHERE id = ? OR reference = ?').get(req.params.id, req.params.id);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, order.id);
+  const updated = db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id);
+  res.json({ ...updated, deposit_paid: updated.deposit_paid === 1 });
 });
 
-// ==================== SETTINGS ROUTES ====================
+app.delete('/api/orders/:id', authMiddleware, (req, res) => {
+  const order = db.prepare('SELECT * FROM orders WHERE id = ? OR reference = ?').get(req.params.id, req.params.id);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  db.prepare('DELETE FROM orders WHERE id = ?').run(order.id);
+  res.json({ success: true });
+});
+
+// ==================== SETTINGS ====================
 
 app.get('/api/settings', (req, res) => {
-  const settings = db.prepare('SELECT * FROM settings').all();
+  const rows = db.prepare('SELECT * FROM settings').all();
   const result = {};
-  settings.forEach(s => { result[s.key] = s.value; });
+  rows.forEach(s => { result[s.key] = s.value; });
   res.json(result);
 });
 
@@ -560,21 +647,26 @@ app.put('/api/settings', authMiddleware, (req, res) => {
 // ==================== HEALTH CHECK ====================
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), products: db.prepare('SELECT COUNT(*) as c FROM products').get().c });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    products: db.prepare('SELECT COUNT(*) as c FROM products').get().c,
+    orders: db.prepare('SELECT COUNT(*) as c FROM orders').get().c,
+    testimonials: db.prepare('SELECT COUNT(*) as c FROM testimonials').get().c
+  });
 });
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Demure Bakes API', version: '2.0.0' });
+  res.json({ message: 'Demure Bakes API', version: '3.0.0', admin: 'demiadmin' });
 });
 
-// Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Demure Bakes API running on port ${PORT}`);
+  console.log(`Demure Bakes API v3 running on port ${PORT}`);
 });
 
 module.exports = app;

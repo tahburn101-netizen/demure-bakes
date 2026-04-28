@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { getSiteContent } from '../api';
 
 const API_BASE = 'https://demure-bakes-backend-production.up.railway.app';
 
@@ -13,6 +14,11 @@ const Sparkle = ({ size, color, style }) => (
 
 export default function Hero({ onOrderClick }) {
   const ringRef = useRef(null);
+  const [content, setContent] = useState({});
+
+  useEffect(() => {
+    getSiteContent().then(d => { if (d) setContent(d); }).catch(() => {});
+  }, []);
 
   const scrollTo = (id) => {
     const el = document.getElementById(id);
@@ -96,13 +102,13 @@ export default function Hero({ onOrderClick }) {
                 fontWeight: 800,
                 color: 'rgb(61,35,20)',
                 marginBottom: '0.1em',
-              }}>Dive into</span>
+              }}>{content.hero_line1 || 'Dive into'}</span>
               <span className="anim-happy" style={{
                 display: 'block',
                 fontSize: 'clamp(3rem,7vw,5.5rem)',
                 fontWeight: 800,
                 color: 'rgb(201,150,58)',
-              }}>Happiness</span>
+              }}>{content.hero_line2 || 'Happiness'}</span>
             </h1>
 
             {/* Subtext */}
@@ -111,7 +117,7 @@ export default function Hero({ onOrderClick }) {
               color: 'rgb(107,79,58)', maxWidth: '480px',
               margin: '1.5rem 0 2rem 0', lineHeight: 1.75,
             }}>
-              Handcrafted brownies, cupcakes &amp; bespoke celebration cakes made with love in the UK
+              {content.hero_tagline || 'Handcrafted brownies, cupcakes & bespoke celebration cakes made with love in the UK'}
             </p>
 
             {/* Buttons */}

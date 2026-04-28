@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getProducts } from '../api';
+import { getProducts, getSiteContent } from '../api';
 
 const CATEGORIES = ['all', 'brownies', 'cupcakes', 'boxes', 'hampers'];
 
@@ -223,6 +223,10 @@ export default function Menu({ onOrder }) {
     ? products.filter(p => p.available !== false)
     : products.filter(p => p.available !== false && p.category === activeCategory);
 
+  const [content, setContent] = useState({});
+  useEffect(() => { getSiteContent().then(setContent).catch(() => {}) }, []);
+  const c = (key, fallback) => content[key] || fallback;
+
   const availableCategories = CATEGORIES.filter(cat =>
     cat === 'all' || products.some(p => p.category === cat && p.available !== false)
   );
@@ -247,13 +251,13 @@ export default function Menu({ onOrder }) {
             fontFamily: '"Baloo 2", cursive', fontWeight: 800,
             fontSize: 'clamp(2rem,4vw,3rem)', color: 'rgb(61,35,20)', margin: '0 0 0.75rem 0',
           }}>
-            Sweet Creations
+            {c('menu_heading', 'Sweet Creations')}
           </h2>
           <p style={{
             fontFamily: 'Nunito, sans-serif', fontSize: '1.05rem',
             color: 'rgb(107,79,58)', maxWidth: '500px', margin: '0 auto', lineHeight: 1.6,
           }}>
-            Every treat is baked fresh to order with the finest ingredients
+            {c('menu_subheading', 'Every treat is baked fresh to order with the finest ingredients')}
           </p>
         </div>
 

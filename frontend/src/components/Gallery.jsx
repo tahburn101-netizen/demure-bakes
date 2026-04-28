@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { getInstagramFeed } from '../api';
+import { getInstagramFeed, getSiteContent } from '../api';
 
 export default function Gallery() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState('gallery');
   const [lightbox, setLightbox] = useState(null);
+  const [content, setContent] = useState({});
 
   useEffect(() => {
     getInstagramFeed()
@@ -15,7 +16,10 @@ export default function Gallery() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+    getSiteContent().then(setContent).catch(() => {});
   }, []);
+
+  const c = (key, fallback) => content[key] || fallback;
 
   return (
     <section id="gallery" style={{ background: 'rgb(237,232,223)', padding: '5rem 0' }}>
@@ -37,15 +41,15 @@ export default function Gallery() {
             fontFamily: '"Baloo 2", cursive', fontWeight: 800,
             fontSize: 'clamp(2rem,4vw,3rem)', color: 'rgb(61,35,20)', margin: '0 0 0.75rem 0',
           }}>
-            Fresh from the Kitchen
+            {c('gallery_heading', 'Fresh from the Kitchen')}
           </h2>
           <p style={{
             fontFamily: 'Nunito, sans-serif', fontSize: '1.05rem',
             color: 'rgb(107,79,58)', maxWidth: '520px', margin: '0 auto', lineHeight: 1.6,
           }}>
-            {source === 'instagram'
+            {c('gallery_subheading', source === 'instagram'
               ? 'Latest from our Instagram @demurebakes — updated automatically with every new post'
-              : 'A look at our latest creations — follow us on Instagram for more'}
+              : 'A look at our latest creations — follow us on Instagram for more')}
           </p>
         </div>
 

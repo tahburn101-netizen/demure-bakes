@@ -32,7 +32,7 @@ export default function Home() {
       <Gallery />
       <Testimonials />
       <About />
-      <Contact />
+      <Contact onOrderClick={() => openOrder()} />
       {orderModalOpen && (
         <OrderModal
           product={selectedProduct}

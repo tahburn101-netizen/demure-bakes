@@ -23,7 +23,7 @@ export const createProduct = (data) => api.post('/api/products', data).then(r =>
 export const updateProduct = (id, data) => api.put(`/api/products/${id}`, data).then(r => r.data);
 export const deleteProduct = (id) => api.delete(`/api/products/${id}`).then(r => r.data);
 
-// Testimonials
+// Testimonials / Reviews
 export const getTestimonials = () => api.get('/api/testimonials').then(r => r.data);
 export const getAllTestimonials = () => api.get('/api/testimonials/all').then(r => r.data);
 export const createTestimonial = (data) => api.post('/api/testimonials', data).then(r => r.data);
@@ -37,15 +37,47 @@ export const updateBankDetails = (data) => api.put('/api/bank-details', data).th
 // Gallery
 export const getGallery = () => api.get('/api/gallery').then(r => r.data);
 export const addGalleryImage = (data) => api.post('/api/gallery', data).then(r => r.data);
+export const addGalleryImageFile = (file, alt) => {
+  const formData = new FormData();
+  formData.append('image', file);
+  if (alt) formData.append('alt', alt);
+  return api.post('/api/gallery', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }).then(r => r.data);
+};
 export const deleteGalleryImage = (id) => api.delete(`/api/gallery/${id}`).then(r => r.data);
 
-// Instagram feed (auto-updates from @demurebakes)
+// Instagram feed (falls back to gallery images)
 export const getInstagramFeed = () => api.get('/api/instagram-feed').then(r => r.data);
+
+// Site Content — backend returns array of {key, value}, we convert to object
+export const getSiteContent = () =>
+  api.get('/api/site-content').then(r => {
+    const data = r.data;
+    if (Array.isArray(data)) {
+      const obj = {};
+      data.forEach(item => { obj[item.key] = item.value; });
+      return obj;
+    }
+    return data;
+  });
+
+// Update all site content at once
+export const updateSiteContent = (updates) =>
+  api.put('/api/site-content', { updates }).then(r => r.data);
+
+// Update a single site content key
+export const updateSiteContentKey = (key, value) =>
+  api.put(`/api/site-content/${key}`, { value }).then(r => r.data);
 
 // Orders
 export const createOrder = (data) => api.post('/api/orders', data).then(r => r.data);
 export const getOrders = () => api.get('/api/orders').then(r => r.data);
-export const updateOrderStatus = (id, status) => api.put(`/api/orders/${id}/status`, { status }).then(r => r.data);
+export const updateOrderDeposit = (id, deposit_paid) =>
+  api.patch(`/api/orders/${id}/deposit`, { deposit_paid }).then(r => r.data);
+export const updateOrderStatus = (id, status) =>
+  api.patch(`/api/orders/${id}/status`, { status }).then(r => r.data);
+export const deleteOrder = (id) => api.delete(`/api/orders/${id}`).then(r => r.data);
 
 // Upload
 export const uploadImages = (files) => {
