@@ -7,8 +7,8 @@ RUN npm run build
 
 FROM node:18-alpine
 WORKDIR /app
-RUN npm install -g serve
+RUN npm install express
 COPY --from=builder /app/dist ./dist
+COPY server.cjs ./server.cjs
 EXPOSE 8080
-ENV PORT=8080
-CMD ["sh", "-c", "serve -s dist -l $PORT"]
+CMD ["node", "server.cjs"]
