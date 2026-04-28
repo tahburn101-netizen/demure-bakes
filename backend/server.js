@@ -136,7 +136,7 @@ if (!bankExists) {
 }
 
 // ==================== SEED DATA ====================
-const SEED_VERSION = '5';
+const SEED_VERSION = '6';
 // Add new columns if they don't exist (safe migration)
 try { db.exec('ALTER TABLE products ADD COLUMN flavours TEXT DEFAULT "[]"'); } catch {}
 try { db.exec('ALTER TABLE products ADD COLUMN portion_sizes TEXT DEFAULT "[]"'); } catch {}
@@ -171,7 +171,7 @@ if (productCount.count === 0) {
       category: 'brownies',
       images: [`${B}/uploads/oreo-brownie-slab-1.jpg`, `${B}/uploads/oreo-caramel-brownie-1.jpg`],
       flavours: ['Oreo', 'Oreo Caramel', 'Biscoff', 'Nutella'],
-      portion_sizes: [{ label: 'Serves 4-6', price: 16 }, { label: 'Serves 8-10', price: 24 }, { label: 'Serves 12+', price: 35 }],
+      portion_sizes: [{ label: '4 Brownies', price: 15 }, { label: '6 Brownies', price: 20 }, { label: '12 Brownies', price: 30 }, { label: '24 Brownies', price: 55 }],
       sort_order: 2
     },
     {
@@ -181,7 +181,7 @@ if (productCount.count === 0) {
       category: 'brownies',
       images: [`${B}/uploads/oreo-brownie-box-1.jpg`, `${B}/uploads/oreo-brownie-box-2.jpg`, `${B}/uploads/oreo-brownie-box-3.jpg`],
       flavours: ['Oreo', 'Biscoff', 'Caramel', 'Mixed'],
-      portion_sizes: [{ label: 'Box of 4', price: 12 }, { label: 'Box of 6', price: 16 }, { label: 'Box of 9', price: 22 }],
+      portion_sizes: [{ label: '4 Brownies', price: 15 }, { label: '6 Brownies', price: 20 }, { label: '12 Brownies', price: 30 }, { label: '24 Brownies', price: 55 }],
       sort_order: 3
     },
     {
