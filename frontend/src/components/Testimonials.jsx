@@ -54,6 +54,7 @@ export default function Testimonials() {
 
   if (testimonials.length === 0) return null;
   const t = testimonials[current];
+  if (!t || !t.author) return null;
 
   return (
     <>
@@ -217,7 +218,7 @@ export default function Testimonials() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontFamily: '"Baloo 2", cursive', fontWeight: 800, fontSize: 18, color: 'white'
               }}>
-                {t.author.charAt(0).toUpperCase()}
+                {(t.author || '?').charAt(0).toUpperCase()}
               </div>
               <span className="testimonial-author-name">{t.author}</span>
             </div>
