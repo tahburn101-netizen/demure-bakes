@@ -763,7 +763,7 @@ function ContentTab({ token }) {
   const GROUPS = [
     { label: '🦸 Hero Section', keys: ['hero_line1', 'hero_line2', 'hero_tagline', 'hero_badge1', 'hero_badge2'] },
     { label: '🧁 Menu Section', keys: ['menu_heading', 'menu_subheading'] },
-    { label: '📋 How It Works', keys: ['how_heading', 'how_step1_title', 'how_step1_desc', 'how_step2_title', 'how_step2_desc', 'how_step3_title', 'how_step3_desc', 'how_step4_title', 'how_step4_desc'] },
+    { label: '📋 How It Works', keys: ['how_heading', 'how_step1_title', 'how_step1_desc', 'how_step2_title', 'how_step2_desc', 'how_step3_title', 'how_step3_desc', 'how_step4_title', 'how_step4_desc', 'how_video_enabled', 'how_video_url'] },
     { label: '🖼️ Gallery Section', keys: ['gallery_heading', 'gallery_subheading'] },
     { label: '⭐ Reviews Section', keys: ['reviews_heading'] },
     { label: '👩‍🍳 About Section', keys: ['about_badge', 'about_heading1', 'about_heading2', 'about_para1', 'about_para2', 'about_stat1_num', 'about_stat1_label', 'about_stat2_num', 'about_stat2_label', 'about_stat3_num', 'about_stat3_label'] },
@@ -788,7 +788,12 @@ function ContentTab({ token }) {
                     {key.replace(/_/g, ' ')}
                   </label>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                    {(content[key] || '').length > 80 ? (
+                    {key === 'how_video_enabled' ? (
+                      <select style={{ ...inputStyle, flex: 1 }} value={String(content[key] || 'false').toLowerCase() === 'true' ? 'true' : 'false'} onChange={e => setContent(c => ({ ...c, [key]: e.target.value }))}>
+                        <option value="false">Off — hide video section</option>
+                        <option value="true">On — show video section</option>
+                      </select>
+                    ) : (content[key] || '').length > 80 ? (
                       <textarea style={{ ...inputStyle, flex: 1, minHeight: '80px', resize: 'vertical' }} value={content[key] || ''} onChange={e => setContent(c => ({ ...c, [key]: e.target.value }))} />
                     ) : (
                       <input style={{ ...inputStyle, flex: 1 }} value={content[key] || ''} onChange={e => setContent(c => ({ ...c, [key]: e.target.value }))} />

@@ -272,12 +272,21 @@ export default function Contact({ onOrderClick }) {
             style={{
               fontFamily: 'Nunito, sans-serif',
               fontSize: '0.8rem',
-              color: 'rgba(245,240,232,0.4)',
+              fontWeight: 800,
+              color: '#3d2314',
+              background: '#c8a84b',
+              border: '1px solid rgba(245,240,232,0.35)',
+              borderRadius: '999px',
+              padding: '0.45rem 0.85rem',
               textDecoration: 'none',
-              transition: 'color 0.2s',
+              transition: 'transform 0.2s, box-shadow 0.2s, background 0.2s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
             }}
-            onMouseEnter={e => e.target.style.color = '#c8a84b'}
-            onMouseLeave={e => e.target.style.color = 'rgba(245,240,232,0.4)'}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 8px 22px rgba(0,0,0,0.25)'; e.currentTarget.style.background = '#e0bd57'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.18)'; e.currentTarget.style.background = '#c8a84b'; }}
           >
             Admin
           </a>

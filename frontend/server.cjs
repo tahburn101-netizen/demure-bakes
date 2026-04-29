@@ -19,6 +19,20 @@ app.use('/api', createProxyMiddleware({
   }
 }));
 
+// Proxy uploaded media requests to the backend. Product and gallery images live
+// in the backend service, while the frontend service only serves the compiled app.
+app.use('/uploads', createProxyMiddleware({
+  target: BACKEND_URL,
+  changeOrigin: true,
+  pathRewrite: {
+    '^/uploads': '/uploads'
+  },
+  onError: (err, req, res) => {
+    console.error('Uploads proxy error:', err);
+    res.status(503).send('Media unavailable');
+  }
+}));
+
 // Serve static files from the dist directory
 app.use(express.static(path.join(__dirname, 'dist')));
 

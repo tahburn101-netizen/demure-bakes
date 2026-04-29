@@ -14,6 +14,25 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'demure-bakes-secret-2026';
 const BACKEND_URL = process.env.BACKEND_URL || 'https://demure-bakes-backend-production.up.railway.app';
 
+const uploadUrl = (value) => {
+  if (!value) return '';
+  const raw = String(value).trim();
+  if (!raw) return '';
+  if (raw.includes('/uploads/')) {
+    return `${BACKEND_URL}/uploads/${raw.split('/uploads/').pop()}`;
+  }
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `${BACKEND_URL}/uploads/${raw.replace(/^\/+/, '')}`;
+};
+
+const uploadFilename = (value) => {
+  if (!value) return '';
+  const raw = String(value).trim();
+  if (raw.includes('/uploads/')) return raw.split('/uploads/').pop();
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return raw.replace(/^\/+/, '');
+};
+
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -340,6 +359,8 @@ if (contentCount.count === 0) {
     { key: 'how_step3_desc', value: 'Your order is freshly baked to perfection for your collection date.' },
     { key: 'how_step4_title', value: 'Collect & Enjoy' },
     { key: 'how_step4_desc', value: 'Pick up your beautiful treats and dive into happiness!' },
+    { key: 'how_video_enabled', value: 'false' },
+    { key: 'how_video_url', value: 'https://www.youtube.com/embed/dQw4w9WgXcQ' },
     { key: 'gallery_heading', value: 'Fresh from the Kitchen' },
     { key: 'gallery_subheading', value: 'A look at our latest creations — follow us on Instagram for more' },
     { key: 'reviews_heading', value: 'What Our Customers Say' },
@@ -365,6 +386,11 @@ if (contentCount.count === 0) {
   defaultContent.forEach(c => insertContent.run(c.key, c.value));
   console.log(`Seeded ${defaultContent.length} site content items`);
 }
+
+// Ensure newer site-content controls exist for already-deployed databases.
+const ensureContent = db.prepare('INSERT OR IGNORE INTO site_content (key, value) VALUES (?, ?)');
+ensureContent.run('how_video_enabled', 'false');
+ensureContent.run('how_video_url', 'https://www.youtube.com/embed/dQw4w9WgXcQ');
 
 // ==================== MIDDLEWARE ====================
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], allowedHeaders: ['Content-Type', 'Authorization'] }));
@@ -430,7 +456,7 @@ app.get('/api/products', (req, res) => {
   const products = db.prepare('SELECT * FROM products ORDER BY sort_order ASC, created_at DESC').all();
   res.json(products.map(p => {
     const images = JSON.parse(p.images || '[]');
-    const fullImages = images.map(img => img.startsWith('http') ? img : `${BACKEND_URL}/uploads/${img}`);
+    const fullImages = images.map(uploadUrl);
     return {
       ...p,
       images: fullImages,
@@ -446,7 +472,7 @@ app.get('/api/products/:id', (req, res) => {
   if (!p) return res.status(404).json({ error: 'Not found' });
   res.json({
     ...p,
-    images: JSON.parse(p.images || '[]'),
+    images: JSON.parse(p.images || '[]').map(uploadUrl),
     available: p.available === 1,
     flavours: JSON.parse(p.flavours || '[]'),
     portion_sizes: JSON.parse(p.portion_sizes || '[]')
@@ -460,7 +486,7 @@ app.post('/api/products', authMiddleware, upload.array('images', 10), (req, res)
   const id = randomUUID();
   let imageUrls = [];
   if (req.files && req.files.length > 0) {
-    imageUrls = req.files.map(f => `${BACKEND_URL}/uploads/${f.filename}`);
+    imageUrls = req.files.map(f => f.filename);
   } else if (body.images) {
     imageUrls = Array.isArray(body.images) ? body.images : JSON.parse(body.images || '[]');
   }
@@ -472,7 +498,7 @@ app.post('/api/products', authMiddleware, upload.array('images', 10), (req, res)
     parseInt(sort_order) || 0, JSON.stringify(parsedFlavours), JSON.stringify(parsedPortions)
   );
   const p = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
-  res.status(201).json({ ...p, images: JSON.parse(p.images), available: p.available === 1, flavours: JSON.parse(p.flavours || '[]'), portion_sizes: JSON.parse(p.portion_sizes || '[]') });
+  res.status(201).json({ ...p, images: JSON.parse(p.images).map(uploadUrl), available: p.available === 1, flavours: JSON.parse(p.flavours || '[]'), portion_sizes: JSON.parse(p.portions || p.portion_sizes || '[]') });
 });
 
 app.put('/api/products/:id', authMiddleware, upload.array('images', 10), (req, res) => {
@@ -482,7 +508,7 @@ app.put('/api/products/:id', authMiddleware, upload.array('images', 10), (req, r
   const { name, description, price, category, available, sort_order, flavours, portion_sizes } = body;
   let imageUrls;
   if (req.files && req.files.length > 0) {
-    imageUrls = req.files.map(f => `${BACKEND_URL}/uploads/${f.filename}`);
+    imageUrls = req.files.map(f => f.filename);
   } else if (body.images) {
     imageUrls = Array.isArray(body.images) ? body.images : JSON.parse(body.images || '[]');
   } else {
@@ -503,7 +529,7 @@ app.put('/api/products/:id', authMiddleware, upload.array('images', 10), (req, r
     req.params.id
   );
   const p = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
-  res.json({ ...p, images: JSON.parse(p.images), available: p.available === 1, flavours: JSON.parse(p.flavours || '[]'), portion_sizes: JSON.parse(p.portion_sizes || '[]') });
+  res.json({ ...p, images: JSON.parse(p.images).map(uploadUrl), available: p.available === 1, flavours: JSON.parse(p.flavours || '[]'), portion_sizes: JSON.parse(p.portion_sizes || '[]') });
 });
 
 app.delete('/api/products/:id', authMiddleware, (req, res) => {
@@ -516,12 +542,12 @@ app.delete('/api/products/:id', authMiddleware, (req, res) => {
 
 app.post('/api/upload', authMiddleware, upload.array('images', 10), (req, res) => {
   if (!req.files || !req.files.length) return res.status(400).json({ error: 'No files uploaded' });
-  res.json({ urls: req.files.map(f => `${BACKEND_URL}/uploads/${f.filename}`) });
+  res.json({ urls: req.files.map(f => uploadUrl(f.filename)) });
 });
 
 app.post('/api/upload/single', authMiddleware, upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  res.json({ url: `${BACKEND_URL}/uploads/${req.file.filename}` });
+  res.json({ url: uploadUrl(req.file.filename) });
 });
 
 // ==================== TESTIMONIALS ROUTES ====================
@@ -589,14 +615,15 @@ app.put('/api/bank-details', authMiddleware, (req, res) => {
 // ==================== GALLERY ====================
 
 app.get('/api/gallery', (req, res) => {
-  res.json(db.prepare('SELECT * FROM gallery_images ORDER BY sort_order ASC, created_at DESC').all());
+  const rows = db.prepare('SELECT * FROM gallery_images ORDER BY sort_order ASC, created_at DESC').all();
+  res.json(rows.map(g => ({ ...g, url: uploadUrl(g.url), thumbnail: uploadUrl(g.url) })));
 });
 
 app.post('/api/gallery', authMiddleware, upload.single('image'), (req, res) => {
   let url, alt, sort_order;
   if (req.file) {
     // File upload
-    url = `${BACKEND_URL}/uploads/${req.file.filename}`;
+    url = req.file.filename;
     alt = req.body.alt || req.file.originalname || '';
     sort_order = parseInt(req.body.sort_order) || 0;
   } else {
@@ -608,9 +635,11 @@ app.post('/api/gallery', authMiddleware, upload.single('image'), (req, res) => {
   if (!url) return res.status(400).json({ error: 'No image provided' });
   const id = randomUUID();
   // Store just the filename if it's a full URL to our backend
-  const filename = url.includes('/uploads/') ? url.split('/uploads/')[1] : url;
-  db.prepare('INSERT INTO gallery_images (id, url, alt, sort_order) VALUES (?, ?, ?, ?)').run(id, url, alt, sort_order);
-  res.status(201).json({ ...db.prepare('SELECT * FROM gallery_images WHERE id = ?').get(id), filename });
+  const filename = uploadFilename(url);
+  const storedUrl = /^https?:\/\//i.test(filename) ? filename : uploadFilename(url);
+  db.prepare('INSERT INTO gallery_images (id, url, alt, sort_order) VALUES (?, ?, ?, ?)').run(id, storedUrl, alt, sort_order);
+  const created = db.prepare('SELECT * FROM gallery_images WHERE id = ?').get(id);
+  res.status(201).json({ ...created, url: uploadUrl(created.url), thumbnail: uploadUrl(created.url), filename });
 });
 
 app.delete('/api/gallery/:id', authMiddleware, (req, res) => {
@@ -657,7 +686,7 @@ app.get('/api/instagram-feed', (req, res) => {
   const gallery = db.prepare('SELECT * FROM gallery_images ORDER BY sort_order ASC, created_at DESC LIMIT 12').all();
   res.json({
     posts: gallery.map(g => {
-      const fullUrl = g.url.startsWith('http') ? g.url : `${BACKEND_URL}/uploads/${g.url}`;
+      const fullUrl = uploadUrl(g.url);
       return { id: g.id, url: fullUrl, thumbnail: fullUrl, caption: g.alt, link: 'https://www.instagram.com/demurebakes' };
     }),
     source: 'gallery',
