@@ -335,7 +335,7 @@ if (faqCount.count === 0) {
 // Seed slot availability
 const slotExists = db.prepare('SELECT id FROM slot_availability WHERE id = 1').get();
 if (!slotExists) {
-  db.prepare('INSERT INTO slot_availability (id, slots_remaining, slots_total, week_label, show_counter) VALUES (1, 3, 5, "This Weekend", 1)').run();
+  db.prepare('INSERT INTO slot_availability (id, slots_remaining, slots_total, week_label, show_counter) VALUES (?, ?, ?, ?, ?)').run(1, 3, 5, 'This Weekend', 1);
   console.log('Seeded slot availability');
 }
 
@@ -927,7 +927,7 @@ const publicDir = path.join(__dirname, 'public');
 if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
   // For React Router: serve index.html for all non-API routes
-  app.get('*', (req, res) => {
+  app.get(/.*/, (req, res) => {
     res.sendFile(path.join(publicDir, 'index.html'));
   });
 } else {
