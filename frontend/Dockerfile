@@ -8,6 +8,8 @@ RUN npm run build
 FROM node:18-alpine
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
-RUN npm install -g serve
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/server.cjs ./
+RUN npm install --production
 EXPOSE 3000
-CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000}"]
+CMD ["node", "server.cjs"]
