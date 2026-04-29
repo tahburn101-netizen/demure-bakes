@@ -35,7 +35,7 @@ export default function Hero({ onOrderClick }) {
         alignItems: 'center',
         overflow: 'hidden',
         background: 'rgb(237,232,223)',
-        paddingTop: '64px',
+        paddingTop: 'calc(64px + var(--slot-banner-height, 0px))',
       }}
     >
       {/* Soft background blobs */}
@@ -79,7 +79,7 @@ export default function Hero({ onOrderClick }) {
           gridTemplateColumns: '1fr 1fr',
           gap: '3rem',
           alignItems: 'center',
-          minHeight: 'calc(100vh - 64px)',
+          minHeight: 'calc(100vh - 64px - var(--slot-banner-height, 0px))',
           paddingTop: '3rem',
           paddingBottom: '5rem',
         }}>
@@ -340,7 +340,7 @@ export default function Hero({ onOrderClick }) {
           .hero-grid {
             grid-template-columns: 1fr !important;
             text-align: center !important;
-            padding-top: 2rem !important;
+            padding-top: 1.5rem !important;
           }
           .hero-left {
             text-align: center !important;
@@ -356,9 +356,17 @@ export default function Hero({ onOrderClick }) {
         }
         @media (max-width: 640px) {
           .sparkle-wrap.s1, .sparkle-wrap.s4 { display: none; }
+          .hero-grid {
+            gap: 1.5rem !important;
+            padding-top: 1rem !important;
+            padding-bottom: 3.5rem !important;
+          }
           .hero-float {
-            width: min(300px, 80vw) !important;
-            height: min(300px, 80vw) !important;
+            width: min(260px, 72vw) !important;
+            height: min(260px, 72vw) !important;
+          }
+          .hero-left span {
+            word-break: normal;
           }
         }
       `}</style>

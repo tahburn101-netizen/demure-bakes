@@ -27,14 +27,14 @@ export default function Navbar({ onOrderClick }) {
   return (
     <nav style={{
       position: 'fixed',
-      top: 0,
+      top: 'var(--slot-banner-height, 0px)',
       left: 0,
       right: 0,
       zIndex: 1000,
       transition: 'all 0.3s',
-      background: scrolled ? 'rgba(237, 232, 223, 0.95)' : 'transparent',
-      backdropFilter: scrolled ? 'blur(12px)' : 'none',
-      boxShadow: scrolled ? '0 2px 16px rgba(61, 35, 20, 0.08)' : 'none',
+      background: scrolled ? 'rgba(237, 232, 223, 0.95)' : 'rgba(237, 232, 223, 0.72)',
+      backdropFilter: 'blur(12px)',
+      boxShadow: scrolled ? '0 2px 16px rgba(61, 35, 20, 0.08)' : '0 1px 0 rgba(201, 150, 58, 0.12)',
     }}>
       <div style={{
         maxWidth: '80rem',
