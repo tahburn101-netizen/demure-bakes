@@ -4,7 +4,18 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+
+const ensureProtocol = (url) => {
+  if (!url) return null;
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+};
+
+const BACKEND_URL = ensureProtocol(
+  process.env.BACKEND_URL ||
+  process.env.VITE_API_URL ||
+  process.env.RAILWAY_SERVICE_DEMURE_BAKES_BACKEND_URL ||
+  process.env.RAILWAY_PRIVATE_DOMAIN_DEMURE_BAKES_BACKEND
+) || 'http://localhost:3001';
 
 // Proxy API requests to the backend
 app.use('/api', createProxyMiddleware({
