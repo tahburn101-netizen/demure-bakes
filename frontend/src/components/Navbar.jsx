@@ -88,8 +88,8 @@ export default function Navbar({ onOrderClick }) {
               {link.label}
             </button>
           ))}
-          <button
-            onClick={onOrderClick}
+          <a
+            href="/order"
             style={{
               background: 'rgb(61, 35, 20)',
               color: 'rgb(237, 232, 223)',
@@ -102,12 +102,14 @@ export default function Navbar({ onOrderClick }) {
               cursor: 'pointer',
               transition: 'transform 0.2s, box-shadow 0.2s',
               boxShadow: '0 4px 12px rgba(61,35,20,0.2)',
+              textDecoration: 'none',
+              display: 'inline-block',
             }}
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(61,35,20,0.3)'; }}
             onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(61,35,20,0.2)'; }}
           >
             Order Now
-          </button>
+          </a>
         </div>
 
         {/* Mobile hamburger */}
@@ -164,10 +166,11 @@ export default function Navbar({ onOrderClick }) {
               {link.label}
             </button>
           ))}
-          <button
-            onClick={onOrderClick}
+          <a
+            href="/order"
             style={{
               marginTop: '1rem',
+              display: 'block',
               width: '100%',
               background: 'rgb(61, 35, 20)',
               color: 'rgb(237, 232, 223)',
@@ -178,10 +181,13 @@ export default function Navbar({ onOrderClick }) {
               fontWeight: 700,
               fontSize: '0.9rem',
               cursor: 'pointer',
+              textDecoration: 'none',
+              textAlign: 'center',
+              boxSizing: 'border-box',
             }}
           >
             Order Now
-          </button>
+          </a>
         </div>
       )}
 

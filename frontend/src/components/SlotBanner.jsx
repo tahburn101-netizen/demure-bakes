@@ -43,19 +43,20 @@ export default function SlotBanner({ onOrderClick }) {
         <strong>Only {slots.slots_remaining} slot{slots.slots_remaining !== 1 ? 's' : ''} left</strong>{' '}
         for {slots.week_label}!
       </span>
-      <button
-        onClick={onOrderClick}
+      <a
+        href="/order"
         style={{
           background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)',
           color: 'white', borderRadius: '50px', padding: '0.3rem 1rem',
           fontFamily: '"Baloo 2", cursive', fontWeight: 700, fontSize: '0.8rem',
           cursor: 'pointer', transition: 'all 0.2s',
+          textDecoration: 'none', display: 'inline-block',
         }}
         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.35)'}
         onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
       >
         Order Now →
-      </button>
+      </a>
     </div>
   );
 }

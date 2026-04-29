@@ -358,6 +358,7 @@ if (contentCount.count === 0) {
     { key: 'contact_subheading', value: 'Have a question or want to discuss a custom order? We\'d love to hear from you.' },
     { key: 'contact_instagram', value: '@demurebakes' },
     { key: 'contact_email', value: 'hello@demurebakes.co.uk' },
+    { key: 'whatsapp_number', value: '447700000000' },
     { key: 'footer_tagline', value: 'Handcrafted with love, delivered with joy.' }
   ];
   const insertContent = db.prepare('INSERT INTO site_content (key, value) VALUES (?, ?)');

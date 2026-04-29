@@ -122,12 +122,13 @@ export default function Hero({ onOrderClick }) {
 
             {/* Buttons */}
             <div className="anim-sub hero-btns" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
-              <button
+              <a
+                href="/order"
                 className="btn-primary"
-                onClick={onOrderClick}
+                style={{ textDecoration: 'none', display: 'inline-block' }}
               >
                 Order Now
-              </button>
+              </a>
               <button
                 className="btn-outline-hero"
                 onClick={() => scrollTo('menu')}

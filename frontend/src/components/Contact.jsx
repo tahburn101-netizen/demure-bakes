@@ -65,8 +65,8 @@ export default function Contact({ onOrderClick }) {
 
           {/* Buttons */}
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '2rem' }}>
-            <button
-              onClick={() => onOrderClick && onOrderClick()}
+            <a
+              href="/order"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -81,12 +81,13 @@ export default function Contact({ onOrderClick }) {
                 border: 'none',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
+                textDecoration: 'none',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = '#d4b96a'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#c8a84b'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
               🎂 Place an Order
-            </button>
+            </a>
 
             <a
               href={instagramUrl}
@@ -248,20 +249,39 @@ export default function Contact({ onOrderClick }) {
           {c('footer_tagline', 'Handcrafted with love, delivered with joy.')} · © {new Date().getFullYear()} Demure Bakes
         </p>
 
-        <a
-          href="/admin"
-          style={{
-            fontFamily: 'Nunito, sans-serif',
-            fontSize: '0.8rem',
-            color: 'rgba(245,240,232,0.4)',
-            textDecoration: 'none',
-            transition: 'color 0.2s',
-          }}
-          onMouseEnter={e => e.target.style.color = '#c8a84b'}
-          onMouseLeave={e => e.target.style.color = 'rgba(245,240,232,0.4)'}
-        >
-          Admin
-        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <a
+            href="/track"
+            style={{
+              fontFamily: 'Nunito, sans-serif',
+              fontSize: '0.8rem',
+              color: 'rgba(245,240,232,0.65)',
+              textDecoration: 'none',
+              transition: 'color 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#c8a84b'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(245,240,232,0.65)'}
+          >
+            🔍 Track Your Order
+          </a>
+          <a
+            href="/admin"
+            style={{
+              fontFamily: 'Nunito, sans-serif',
+              fontSize: '0.8rem',
+              color: 'rgba(245,240,232,0.4)',
+              textDecoration: 'none',
+              transition: 'color 0.2s',
+            }}
+            onMouseEnter={e => e.target.style.color = '#c8a84b'}
+            onMouseLeave={e => e.target.style.color = 'rgba(245,240,232,0.4)'}
+          >
+            Admin
+          </a>
+        </div>
       </footer>
     </>
   );
