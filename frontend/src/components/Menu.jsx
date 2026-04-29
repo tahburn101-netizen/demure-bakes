@@ -127,6 +127,30 @@ const ALLERGEN_ICONS = {
   'Nut-Free': '✅',
 };
 
+function normalizeList(value) {
+  if (Array.isArray(value)) return value.filter(item => item !== null && item !== undefined && item !== '');
+  if (value === null || value === undefined || value === '') return [];
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.filter(item => item !== null && item !== undefined && item !== '');
+    } catch {
+      // Fall back to comma-separated legacy values.
+    }
+
+    return trimmed
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  return [value];
+}
+
 function ProductCard({ product, onOrder }) {
   const [hovered, setHovered] = useState(false);
 
@@ -139,8 +163,10 @@ function ProductCard({ product, onOrder }) {
   };
 
   // Compute price display from portion_sizes
-  const portions = product.portion_sizes || [];
-  const flavours = product.flavours || [];
+  const portions = normalizeList(product.portion_sizes);
+  const flavours = normalizeList(product.flavours);
+  const allergens = normalizeList(product.allergens);
+  const images = normalizeList(product.images);
   const minPrice = portions.length > 0 ? Math.min(...portions.map(s => parseFloat(s.price) || 0)) : Number(product.price);
   const maxPrice = portions.length > 0 ? Math.max(...portions.map(s => parseFloat(s.price) || 0)) : Number(product.price);
   const priceLabel = portions.length > 1 && minPrice !== maxPrice
@@ -164,7 +190,7 @@ function ProductCard({ product, onOrder }) {
       }}
     >
       <div style={{ position: 'relative' }}>
-        <ImageCarousel images={product.images} name={product.name} />
+        <ImageCarousel images={images} name={product.name} />
         {/* Sold-Out overlay */}
         {!product.available && (
           <div style={{
@@ -189,7 +215,7 @@ function ProductCard({ product, onOrder }) {
         }}>
           {product.category}
         </div>
-        {product.images && product.images.length > 1 && (
+        {images.length > 1 && (
           <div style={{
             position: 'absolute', top: '12px', right: '12px',
             background: 'rgba(0,0,0,0.45)', color: 'white',
@@ -198,7 +224,7 @@ function ProductCard({ product, onOrder }) {
             display: 'flex', alignItems: 'center', gap: '3px', zIndex: 2,
           }}>
             <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-            {product.images.length} photos
+            {images.length} photos
           </div>
         )}
       </div>
@@ -247,9 +273,9 @@ function ProductCard({ product, onOrder }) {
           </div>
         )}
         {/* Allergen / dietary tags */}
-        {product.allergens && product.allergens.length > 0 && (
+        {allergens.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.75rem' }}>
-            {product.allergens.map((a, i) => {
+            {allergens.map((a, i) => {
               const isPositive = ['Vegan', 'Gluten-Free', 'Nut-Free'].includes(a);
               return (
                 <span key={i} style={{
